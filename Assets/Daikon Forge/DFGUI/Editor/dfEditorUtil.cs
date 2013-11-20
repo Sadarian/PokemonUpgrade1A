@@ -273,4 +273,11 @@ public class dfEditorUtil
 		GUI.DrawTexture( destRect, texture );
 
 	}
+
+	internal static void DrawSprite( Rect rect, dfAtlas atlas, string sprite )
+	{
+		var spriteInfo = atlas[ sprite ];
+		GUI.DrawTextureWithTexCoords( rect, atlas.Material.mainTexture, spriteInfo.region, true );
+	}
+
 }

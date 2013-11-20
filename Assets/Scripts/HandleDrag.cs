@@ -6,9 +6,10 @@ public class HandleDrag : MonoBehaviour
 	public GameController.Materials material;
 	public Vector3 startPosition;
 	public dfSprite sprite;
+	public bool draged = false;
+	public bool inSlot = false;
 
 	private Vector2 rootPosition;
-	public bool draged = false;
 
 	private bool init = false;
 	private GameController gameController;
@@ -32,7 +33,10 @@ public class HandleDrag : MonoBehaviour
 		draged = true;
 		rootPosition = transform.parent.GetComponent<dfControl>().RelativePosition + transform.parent.parent.GetComponent<dfControl>().RelativePosition;
 
-		gameController.HandleDrag(control.gameObject, -1);
+		if (!inSlot)
+		{
+			gameController.HandleDrag(control.gameObject, -1);
+		}
 	}
 
 	private void Init()
@@ -43,7 +47,6 @@ public class HandleDrag : MonoBehaviour
 
 	public void OnDragEnd(dfControl control, dfDragEventArgs dragEvent)
 	{
-		
 		if (dragEvent.State == dfDragDropState.Dropped)return;
 		Vector3 curPosition = Input.mousePosition;
 
@@ -56,6 +59,11 @@ public class HandleDrag : MonoBehaviour
 			dragEvent.State = dfDragDropState.Dropped;
 		}
 		draged = false;
+
+		if (inSlot)
+		{
+
+		}
 	}
 	
 	// Update is called once per frame

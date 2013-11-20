@@ -73,13 +73,25 @@ public class dfRichTextLabel : dfControl, IDFMultiRender
 	protected int fontSize = 16;
 
 	[SerializeField]
+	protected int lineheight = 16;
+
+	[SerializeField]
+	protected dfTextScaleMode textScaleMode = dfTextScaleMode.None;
+
+	[SerializeField]
 	protected FontStyle fontStyle = FontStyle.Normal;
+
+	[SerializeField]
+	protected bool preserveWhitespace = false;
 
 	[SerializeField]
 	protected string blankTextureSprite;
 
 	[SerializeField]
 	protected dfMarkupTextAlign align;
+
+	[SerializeField]
+	protected bool allowScrolling = false;
 
 	[SerializeField]
 	protected dfScrollbar horzScrollbar;
@@ -109,6 +121,7 @@ public class dfRichTextLabel : dfControl, IDFMultiRender
 	private Vector2 touchStartPosition = Vector2.zero;
 	private Vector2 scrollMomentum = Vector2.zero;
 	private bool isMarkupInvalidated = true;
+	private Vector2 startSize = Vector2.zero;
 
 	#endregion
 
@@ -154,6 +167,7 @@ public class dfRichTextLabel : dfControl, IDFMultiRender
 			if( value != this.font )
 			{
 				this.font = value;
+				this.LineHeight = value.FontSize;
 				Invalidate();
 			}
 		}
@@ -184,6 +198,7 @@ public class dfRichTextLabel : dfControl, IDFMultiRender
 		get { return this.text; }
 		set
 		{
+			value = this.getLocalizedValue( value );
 			if( !string.Equals( this.text, value ) )
 			{
 				this.text = value;
@@ -207,6 +222,49 @@ public class dfRichTextLabel : dfControl, IDFMultiRender
 			if( value != this.fontSize )
 			{
 				this.fontSize = value;
+				Invalidate();
+			}
+			LineHeight = value;
+		}
+	}
+
+	/// <summary>
+	/// Gets or sets the default height (in pixels) of a line of rendered text.
+	/// </summary>
+	public int LineHeight
+	{
+		get { return this.lineheight; }
+		set
+		{
+			value = Mathf.Max( FontSize, value );
+			if( value != this.lineheight )
+			{
+				this.lineheight = value;
+				Invalidate();
+			}
+		}
+	}
+
+	/// <summary>
+	/// Gets or sets the method by which text will be automatically scaled
+	/// </summary>
+	public dfTextScaleMode TextScaleMode
+	{
+		get { return this.textScaleMode; }
+		set { this.textScaleMode = value; Invalidate(); }
+	}
+
+	/// <summary>
+	/// Determines whether whitespace will be preserved by default.
+	/// </summary>
+	public bool PreserveWhitespace
+	{
+		get { return this.preserveWhitespace; }
+		set
+		{
+			if( value != this.preserveWhitespace )
+			{
+				this.preserveWhitespace = value;
 				Invalidate();
 			}
 		}
@@ -245,6 +303,22 @@ public class dfRichTextLabel : dfControl, IDFMultiRender
 	}
 
 	/// <summary>
+	/// Gets or sets whether this control allows scrolling
+	/// </summary>
+	public bool AllowScrolling
+	{
+		get { return this.allowScrolling; }
+		set 
+		{ 
+			this.allowScrolling = value;
+			if( !value )
+			{
+				ScrollPosition = Vector2.zero;
+			}
+		}
+	}
+
+	/// <summary>
 	/// Gets or sets the upper-left position of the viewport relative
 	/// to the entire scrollable area
 	/// </summary>
@@ -253,6 +327,9 @@ public class dfRichTextLabel : dfControl, IDFMultiRender
 		get { return this.scrollPosition; }
 		set
 		{
+
+			if( !allowScrolling )
+				value = Vector2.zero;
 
 			var maxPosition = ContentSize - Size;
 
@@ -330,10 +407,22 @@ public class dfRichTextLabel : dfControl, IDFMultiRender
 
 	#region dfControl overrides 
 
+	protected internal override void OnLocalize()
+	{
+		base.OnLocalize();
+		this.Text = getLocalizedValue( this.text );
+	}
+
 	public override void Invalidate()
 	{
 		base.Invalidate();
 		isMarkupInvalidated = true;
+	}
+
+	public override void Awake()
+	{
+		base.Awake();
+		startSize = this.Size;
 	}
 
 	public override void OnEnable()
@@ -344,6 +433,7 @@ public class dfRichTextLabel : dfControl, IDFMultiRender
 		if( this.size.sqrMagnitude <= float.Epsilon )
 		{
 			this.Size = new Vector2( 320, 200 );
+			this.FontSize = this.LineHeight = 16;
 		}
 
 	}
@@ -515,6 +605,9 @@ public class dfRichTextLabel : dfControl, IDFMultiRender
 
 		base.OnMouseMove( args );
 
+		if( !allowScrolling )
+			return;
+
 		var scrollWithDrag =
 			args is dfTouchEventArgs ||
 			isMouseDown;
@@ -537,7 +630,7 @@ public class dfRichTextLabel : dfControl, IDFMultiRender
 		try
 		{
 
-			if( args.Used )
+			if( args.Used || !allowScrolling )
 				return;
 
 			var wheelAmount = this.UseScrollMomentum ? 1 : 3;
@@ -603,12 +696,15 @@ public class dfRichTextLabel : dfControl, IDFMultiRender
 		if( !this.isVisible || this.Font == null )
 			return null;
 
-		if( !this.isControlInvalidated )
+		if( !this.isControlInvalidated && viewportBox != null )
 		{
-			return this.buffers;
-		}
 
-		this.isControlInvalidated = false;
+			buffers.Clear();
+			gatherRenderBuffers( viewportBox, buffers );
+
+			return this.buffers;
+
+		}
 
 		Profiler.BeginSample( "Render " + this.name );
 		try
@@ -638,6 +734,7 @@ public class dfRichTextLabel : dfControl, IDFMultiRender
 		}
 		finally
 		{
+			this.isControlInvalidated = false;
 			Profiler.EndSample();
 		}
 
@@ -676,19 +773,22 @@ public class dfRichTextLabel : dfControl, IDFMultiRender
 
 		this.elements = dfMarkupParser.Parse( this, this.text );
 
-		var multiplier = (float)FontSize / (float)font.FontSize;
+		var scaleMultiplier = getTextScaleMultiplier();
+
+		var scaledFontSize = Mathf.CeilToInt( this.FontSize * scaleMultiplier );
+		var scaledLineHeight = Mathf.CeilToInt( this.LineHeight * scaleMultiplier );
 
 		var style = new dfMarkupStyle()
 		{
 			Host = this,
 			Atlas = this.Atlas,
 			Font = this.Font,
-			FontSize = this.FontSize,
+			FontSize = scaledFontSize,
 			FontStyle = this.FontStyle,
-			LineHeight = (int)( this.Font.LineHeight * multiplier ),
+			LineHeight = scaledLineHeight,
 			Color = this.Color,
 			Align = this.TextAlignment,
-			PreserveWhitespace = false
+			PreserveWhitespace = this.preserveWhitespace
 		};
 
 		viewportBox = new dfMarkupBox( null, dfMarkupDisplayType.block, style )
@@ -706,6 +806,22 @@ public class dfRichTextLabel : dfControl, IDFMultiRender
 			}
 		}
 		Profiler.EndSample();
+
+	}
+
+	private float getTextScaleMultiplier()
+	{
+
+		if( textScaleMode == dfTextScaleMode.None || !Application.isPlaying )
+			return 1f;
+
+		// Return the difference between design resolution and current resolution
+		if( textScaleMode == dfTextScaleMode.ScreenResolution )
+		{
+			return (float)Screen.height / (float)manager.FixedHeight;
+		}
+
+		return Size.y / startSize.y;
 
 	}
 
@@ -812,7 +928,7 @@ public class dfRichTextLabel : dfControl, IDFMultiRender
 			{
 				if( this.atlas != null )
 				{
-					buffer.Material = atlas.material;
+					buffer.Material = atlas.Material;
 				}
 			}
 
@@ -821,15 +937,10 @@ public class dfRichTextLabel : dfControl, IDFMultiRender
 			var offset = (Vector3)( scroll + box.GetOffset().Scale( 1, -1 ) );
 			
 			var vertices = buffer.Vertices;
+			var matrix = this.transform.localToWorldMatrix;
 			for( int i = 0; i < buffer.Vertices.Count; i++ )
 			{
-				vertices[ i ] += offset;
-			}
-
-			var matrix = transform.localToWorldMatrix;
-			for( int i = 0; i < buffer.Vertices.Count; i++ )
-			{
-				vertices[ i ] = matrix.MultiplyPoint( vertices[ i ] * p2u );
+				vertices[ i ] = matrix.MultiplyPoint( ( offset + vertices[ i ] ) * p2u );
 			}
 
 			if( intersectionType == dfIntersectionType.Intersecting )
@@ -880,14 +991,13 @@ public class dfRichTextLabel : dfControl, IDFMultiRender
 		var material = renderData.Material;
 		var matrix = renderData.Transform;
 
+		clipBuffer.Clear();
 		dfClippingUtil.Clip( planes, renderData, clipBuffer );
 
 		renderData.Clear();
 		renderData.Merge( clipBuffer, false );
 		renderData.Material = material;
 		renderData.Transform = matrix;
-
-		clipBuffer.Clear();
 
 		Profiler.EndSample();
 

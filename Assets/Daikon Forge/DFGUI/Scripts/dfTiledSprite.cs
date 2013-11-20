@@ -80,7 +80,7 @@ public class dfTiledSprite : dfSprite
 		if( spriteInfo == null )
 			return;
 
-		renderData.Material = Atlas.material;
+		renderData.Material = Atlas.Material;
 
 		var verts = renderData.Vertices;
 		var uv = renderData.UV;

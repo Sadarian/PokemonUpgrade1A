@@ -192,6 +192,8 @@ public class dfCheckbox : dfControl
 
 		}
 
+		args.Use();
+
 		base.OnClick( args );
 
 	}

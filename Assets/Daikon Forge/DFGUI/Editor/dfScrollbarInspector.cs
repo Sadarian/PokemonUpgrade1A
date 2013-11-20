@@ -89,6 +89,13 @@ public class dfScrollbarInspector : dfControlInspector
 				control.Value = value;
 			}
 
+			var autoHide = EditorGUILayout.Toggle( "Auto Hide", control.AutoHide );
+			if( autoHide != control.AutoHide )
+			{
+				dfEditorUtil.MarkUndo( control, "Change AutoHide property" );
+				control.AutoHide = autoHide;
+			}
+
 		}
 
 		GUILayout.Label( "Controls", "HeaderLabel" );
@@ -97,29 +104,57 @@ public class dfScrollbarInspector : dfControlInspector
 			var track = EditorGUILayout.ObjectField( "Track", control.Track, typeof( dfControl ), true ) as dfControl;
 			if( track != control.Track )
 			{
-				dfEditorUtil.MarkUndo( control, "Assign Track" );
-				control.Track = track;
+				if( track == null || track.transform.IsChildOf( control.transform ) )
+				{
+					dfEditorUtil.MarkUndo( control, "Assign Track" );
+					control.Track = track;
+				}
+				else
+				{
+					EditorUtility.DisplayDialog( "Invalid Control", "You can only assign controls to this property that are a child of the " + control.name + " control", "OK" );
+				}
 			}
 
 			var incButton = EditorGUILayout.ObjectField( "Inc. Button", control.IncButton, typeof( dfControl ), true ) as dfControl;
 			if( incButton != control.IncButton )
 			{
-				dfEditorUtil.MarkUndo( control, "Assign Increment Button" );
-				control.IncButton = incButton;
+				if( incButton == null || incButton.transform.IsChildOf( control.transform ) )
+				{
+					dfEditorUtil.MarkUndo( control, "Assign Increment Button" );
+					control.IncButton = incButton;
+				}
+				else
+				{
+					EditorUtility.DisplayDialog( "Invalid Control", "You can only assign controls to this property that are a child of the " + control.name + " control", "OK" );
+				}
 			}
 
 			var decButton = EditorGUILayout.ObjectField( "Dec. Button", control.DecButton, typeof( dfControl ), true ) as dfControl;
 			if( decButton != control.DecButton )
 			{
-				dfEditorUtil.MarkUndo( control, "Assign Decrement Button" );
-				control.DecButton = decButton;
+				if( decButton == null || decButton.transform.IsChildOf( control.transform ) )
+				{
+					dfEditorUtil.MarkUndo( control, "Assign Decrement Button" );
+					control.DecButton = decButton;
+				}
+				else
+				{
+					EditorUtility.DisplayDialog( "Invalid Control", "You can only assign controls to this property that are a child of the " + control.name + " control", "OK" );
+				}
 			}
 
 			var thumb = EditorGUILayout.ObjectField( "Thumb", control.Thumb, typeof( dfControl ), true ) as dfControl;
 			if( thumb != control.Thumb )
 			{
-				dfEditorUtil.MarkUndo( control, "Assign Thumb" );
-				control.Thumb = thumb;
+				if( thumb == null || thumb.transform.IsChildOf( control.transform ) )
+				{
+					dfEditorUtil.MarkUndo( control, "Assign Thumb" );
+					control.Thumb = thumb;
+				}
+				else
+				{
+					EditorUtility.DisplayDialog( "Invalid Control", "You can only assign controls to this property that are a child of the " + control.name + " control", "OK" );
+				}
 			}
 
 			if( thumb != null )

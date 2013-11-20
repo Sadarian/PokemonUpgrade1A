@@ -44,14 +44,6 @@ public class dfSpriteSelectionDialog : ScriptableWizard
 		if( atlas.Texture == null )
 			throw new Exception( "The Texture Atlas does not have a texture or the texture was deleted" );
 
-		for( int i = 0; i < atlas.items.Count; i++ )
-		{
-			if( atlas.items[ i ].texture == null )
-			{
-				Debug.LogError( "The sprite '" + atlas.items[ i ].name + "' does not have a texture or the texture was deleted" );
-			}
-		}
-
 		#endregion
 
 		var dialog = ScriptableWizard.DisplayWizard<dfSpriteSelectionDialog>( title );
@@ -126,8 +118,8 @@ public class dfSpriteSelectionDialog : ScriptableWizard
 
 		var filteredItems =
 			!string.IsNullOrEmpty( searchFilter )
-			? atlas.items.Where( i => i.texture != null && i.name.IndexOf( searchFilter, StringComparison.InvariantCultureIgnoreCase ) != -1 ).ToList()
-			: atlas.items;
+			? atlas.Items.Where( i => i.name.IndexOf( searchFilter, StringComparison.InvariantCultureIgnoreCase ) != -1 ).ToList()
+			: atlas.Items;
 
 		var previewSize = 100f;
 		var padding = 10f;
@@ -209,7 +201,7 @@ public class dfSpriteSelectionDialog : ScriptableWizard
 		}
 
 		var savedColor = GUI.color;
-		if( !string.IsNullOrEmpty( name ) && ( sprite == null || sprite.texture == null ) )
+		if( !string.IsNullOrEmpty( name ) && sprite == null )
 		{
 			labelStyle = "minibutton";
 			GUI.color = Color.red;
@@ -247,8 +239,8 @@ public class dfSpriteSelectionDialog : ScriptableWizard
 		if( sprite == null )
 			return "";
 
-		var width = sprite.texture != null ? sprite.texture.width : 0;
-		var height = sprite.texture != null ? sprite.texture.height : 0;
+		var width = (int)sprite.sizeInPixels.x;
+		var height = (int)sprite.sizeInPixels.y;
 
 		return string.Format( 
 			"Atlas: {3}  Sprite: {0}  Size: {1}x{2}",
@@ -272,11 +264,7 @@ public class dfSpriteSelectionDialog : ScriptableWizard
 	private void drawSprite( Rect rect, dfAtlas.ItemInfo sprite )
 	{
 
-		var texture = sprite.texture; 
-		if( texture == null )
-			return;
-
-		var size = new Vector2( texture.width, texture.height );
+		var size = sprite.sizeInPixels;
 		var destRect = rect;
 
 		if( destRect.width < size.x || destRect.height < size.y )
@@ -298,7 +286,7 @@ public class dfSpriteSelectionDialog : ScriptableWizard
 		if( destRect.width < rect.width ) destRect.x = rect.x + ( rect.width - destRect.width ) * 0.5f;
 		if( destRect.height < rect.height ) destRect.y = rect.y + ( rect.height - destRect.height ) * 0.5f;
 
-		GUI.DrawTexture( destRect, texture );
+		GUI.DrawTextureWithTexCoords( destRect, atlas.Material.mainTexture, sprite.region, true );
 
 	}
 

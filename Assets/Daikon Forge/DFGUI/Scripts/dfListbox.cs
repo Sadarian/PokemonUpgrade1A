@@ -334,7 +334,7 @@ public class dfListbox : dfInteractiveBase
 	}
 
 	/// <summary>
-	/// Gets or sets the amount of padding that will be applied to the label's 
+	/// Gets or sets the amount of padding that will be applied to the control's 
 	/// borders when rendering the collection of list items
 	/// </summary>
 	public RectOffset ListPadding
@@ -450,7 +450,7 @@ public class dfListbox : dfInteractiveBase
 		if( Atlas == null || Font == null )
 			return;
 
-		renderData.Material = Atlas.material;
+		renderData.Material = Atlas.Material;
 
 		renderBackground();
 

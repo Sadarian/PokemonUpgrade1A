@@ -57,6 +57,13 @@ public class dfTabstripInspector : dfControlInspector
 		GUILayout.Label( "Behavior", "HeaderLabel" );
 		{
 
+			var allowKeyNav = EditorGUILayout.Toggle( "Keyboard Nav.", control.AllowKeyboardNavigation );
+			if( allowKeyNav != control.AllowKeyboardNavigation )
+			{
+				dfEditorUtil.MarkUndo( control, "Toggle 'Allow Keyboard Navigation'" );
+				control.AllowKeyboardNavigation = allowKeyNav;
+			}
+
 			var tabCount = control.Controls.Count;
 			var selectedIndex = EditorGUILayout.IntSlider( "Selected Tab", control.SelectedIndex, 0, tabCount - 1 );
 			if( selectedIndex != control.SelectedIndex )

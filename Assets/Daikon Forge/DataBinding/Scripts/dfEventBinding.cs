@@ -5,7 +5,6 @@ using UnityEngine;
 using System;
 using System.Linq;
 using System.Reflection;
-using System.Reflection.Emit;
 using System.Collections;
 using System.Collections.Generic;
 
@@ -42,6 +41,7 @@ public class dfEventBinding : MonoBehaviour, IDataBindingComponent
 
 	private FieldInfo eventField;
 	private Delegate eventDelegate;
+	private MethodInfo handlerProxy;
 
 	#endregion
 
@@ -49,7 +49,7 @@ public class dfEventBinding : MonoBehaviour, IDataBindingComponent
 
 	public void OnEnable()
 	{
-		if( !isBound && DataSource.IsValid && DataTarget.IsValid )
+		if( DataSource != null && !isBound && DataSource.IsValid && DataTarget.IsValid )
 		{
 			Bind();
 		}
@@ -57,7 +57,7 @@ public class dfEventBinding : MonoBehaviour, IDataBindingComponent
 
 	public void Start()
 	{
-		if( !isBound && DataSource.IsValid && DataTarget.IsValid )
+		if( DataSource != null && !isBound && DataSource.IsValid && DataTarget.IsValid )
 		{
 			Bind();
 		}
@@ -78,7 +78,7 @@ public class dfEventBinding : MonoBehaviour, IDataBindingComponent
 	public void Bind()
 	{
 
-		if( isBound )
+		if( isBound || DataSource == null )
 			return;
 
 		if( !DataSource.IsValid || !DataTarget.IsValid )
@@ -107,38 +107,28 @@ public class dfEventBinding : MonoBehaviour, IDataBindingComponent
 		try
 		{
 
-			var invokeMethod = eventField.FieldType.GetMethod( "Invoke" );
-			var invokeParams = invokeMethod.GetParameters();
+			var eventMethod = eventField.FieldType.GetMethod( "Invoke" );
+			var eventParams = eventMethod.GetParameters();
 			var handlerParams = eventHandler.GetParameters();
 
-			if( invokeParams.Length == handlerParams.Length )
+			if( eventParams.Length == handlerParams.Length )
 			{
 				eventDelegate = Delegate.CreateDelegate( eventField.FieldType, targetComponent, eventHandler, true );
 			}
-			else if( invokeParams.Length > 0 && handlerParams.Length == 0 )
+			else if( eventParams.Length > 0 && handlerParams.Length == 0 )
 			{
-#if !UNITY_IPHONE
-				eventDelegate = createDynamicWrapper( targetComponent, eventField.FieldType, invokeParams, eventHandler );
-#else	
-				var message = string.Format( 
-					"Dynamic code generation is not supported on the target platform, the {0}.{1} method must exactly match the event signature for {2}.{3}", 
-					DataTarget.Component.GetType().Name, 
-					DataTarget.MemberName, 
-					DataSource.Component.GetType().Name, 
-					DataSource.MemberName 
-					);
-
-				throw new InvalidOperationException( message );
-#endif
+				eventDelegate = createEventProxyDelegate( targetComponent, eventField.FieldType, eventParams, eventHandler );
 			}
 			else
 			{
+				this.enabled = false;
 				throw new InvalidCastException( "Event signature mismatch: " + eventHandler );
 			}
 
 		}
 		catch( Exception err )
 		{
+			this.enabled = false;
 			Debug.LogError( "Event binding failed - Failed to create event handler: " + err.ToString() );
 			return;
 		}
@@ -167,6 +157,7 @@ public class dfEventBinding : MonoBehaviour, IDataBindingComponent
 
 		eventField = null;
 		eventDelegate = null;
+		handlerProxy = null;
 
 		sourceComponent = null;
 		targetComponent = null;
@@ -195,7 +186,219 @@ public class dfEventBinding : MonoBehaviour, IDataBindingComponent
 
 	#endregion
 
+	#region Proxy event handlers
+
+	/// <summary>
+	///  definition for control mouse events
+	/// </summary>
+	/// <param name="control">The <see cref="dfControl"/> instance which is currently notified of the event</param>
+	/// <param name="mouseEvent">Contains information about the user mouse operation that triggered the event</param>
+	[dfEventProxy]
+	private void MouseEventProxy( dfControl control, dfMouseEventArgs mouseEvent )
+	{
+		callProxyEventHandler();
+	}
+
+	/// <summary>
+	///  definition for control keyboard events
+	/// </summary>
+	/// <param name="control">The <see cref="dfControl"/> instance for which the event was generated</param>
+	/// <param name="keyEvent">Contains information about the user keyboard operation that triggered the event</param>
+	[dfEventProxy]
+	private void KeyEventProxy( dfControl control, dfKeyEventArgs keyEvent )
+	{
+		callProxyEventHandler();
+	}
+
+	/// <summary>
+	///  definition for control drag and drop events
+	/// </summary>
+	/// <param name="control">The <see cref="dfControl"/> instance for which the event was generated</param>
+	/// <param name="keyEvent">Contains information about the drag and drop operation that triggered the event</param>
+	[dfEventProxy]
+	private void DragEventProxy( dfControl control, dfDragEventArgs dragEvent )
+	{
+		callProxyEventHandler();
+	}
+
+	/// <summary>
+	///  definition for control hierarchy change events
+	/// </summary>
+	/// <param name="container">The <see cref="dfControl"/> instance for which the event was generated</param>
+	/// <param name="child">A reference to the child control that was added to or removed from the container</param>
+	[dfEventProxy]
+	private void ChildControlEventProxy( dfControl container, dfControl child )
+	{
+		callProxyEventHandler();
+	}
+
+	/// <summary>
+	///  definition for control focus events
+	/// </summary>
+	/// <param name="control">The <see cref="dfControl"/> instance for which the event was generated</param>
+	/// <param name="args">Contains information about the focus change event, including a reference to which control
+	/// (if any) lost focus and which control (if any) obtained input focus</param>
+	[dfEventProxy]
+	private void FocusEventProxy( dfControl control, dfFocusEventArgs args )
+	{
+		callProxyEventHandler();
+	}
+
+	/// <summary>
+	/// Delegate definition for control property change events
+	/// </summary>
+	/// <typeparam name="T">The data type of the property that has changed</typeparam>
+	/// <param name="control">The <see cref="dfControl"/> instance for which the event was generated</param>
+	/// <param name="value">The new value of the associated property</param>
+	[dfEventProxy]
+	private void PropertyChangedProxy( dfControl control, int value )
+	{
+		callProxyEventHandler();
+	}
+
+	/// <summary>
+	/// Delegate definition for control property change events
+	/// </summary>
+	/// <typeparam name="T">The data type of the property that has changed</typeparam>
+	/// <param name="control">The <see cref="dfControl"/> instance for which the event was generated</param>
+	/// <param name="value">The new value of the associated property</param>
+	[dfEventProxy]
+	private void PropertyChangedProxy( dfControl control, float value )
+	{
+		callProxyEventHandler();
+	}
+
+	/// <summary>
+	/// Delegate definition for control property change events
+	/// </summary>
+	/// <typeparam name="T">The data type of the property that has changed</typeparam>
+	/// <param name="control">The <see cref="dfControl"/> instance for which the event was generated</param>
+	/// <param name="value">The new value of the associated property</param>
+	[dfEventProxy]
+	private void PropertyChangedProxy( dfControl control, bool value )
+	{
+		callProxyEventHandler();
+	}
+
+	/// <summary>
+	/// Delegate definition for control property change events
+	/// </summary>
+	/// <typeparam name="T">The data type of the property that has changed</typeparam>
+	/// <param name="control">The <see cref="dfControl"/> instance for which the event was generated</param>
+	/// <param name="value">The new value of the associated property</param>
+	[dfEventProxy]
+	private void PropertyChangedProxy( dfControl control, string value )
+	{
+		callProxyEventHandler();
+	}
+
+	/// <summary>
+	/// Delegate definition for control property change events
+	/// </summary>
+	/// <typeparam name="T">The data type of the property that has changed</typeparam>
+	/// <param name="control">The <see cref="dfControl"/> instance for which the event was generated</param>
+	/// <param name="value">The new value of the associated property</param>
+	[dfEventProxy]
+	private void PropertyChangedProxy( dfControl control, Vector2 value )
+	{
+		callProxyEventHandler();
+	}
+
+	/// <summary>
+	/// Delegate definition for control property change events
+	/// </summary>
+	/// <typeparam name="T">The data type of the property that has changed</typeparam>
+	/// <param name="control">The <see cref="dfControl"/> instance for which the event was generated</param>
+	/// <param name="value">The new value of the associated property</param>
+	[dfEventProxy]
+	private void PropertyChangedProxy( dfControl control, Vector3 value )
+	{
+		callProxyEventHandler();
+	}
+
+	/// <summary>
+	/// Delegate definition for control property change events
+	/// </summary>
+	/// <typeparam name="T">The data type of the property that has changed</typeparam>
+	/// <param name="control">The <see cref="dfControl"/> instance for which the event was generated</param>
+	/// <param name="value">The new value of the associated property</param>
+	[dfEventProxy]
+	private void PropertyChangedProxy( dfControl control, Vector4 value )
+	{
+		callProxyEventHandler();
+	}
+
+	/// <summary>
+	/// Delegate definition for control property change events
+	/// </summary>
+	/// <typeparam name="T">The data type of the property that has changed</typeparam>
+	/// <param name="control">The <see cref="dfControl"/> instance for which the event was generated</param>
+	/// <param name="value">The new value of the associated property</param>
+	[dfEventProxy]
+	private void PropertyChangedProxy( dfControl control, Quaternion value )
+	{
+		callProxyEventHandler();
+	}
+
+	/// <summary>
+	/// Delegate definition for control property change events
+	/// </summary>
+	/// <typeparam name="T">The data type of the property that has changed</typeparam>
+	/// <param name="control">The <see cref="dfControl"/> instance for which the event was generated</param>
+	/// <param name="value">The new value of the associated property</param>
+	[dfEventProxy]
+	private void PropertyChangedProxy( dfControl control, dfButton.ButtonState value )
+	{
+		callProxyEventHandler();
+	}
+
+	/// <summary>
+	/// Delegate definition for control property change events
+	/// </summary>
+	/// <typeparam name="T">The data type of the property that has changed</typeparam>
+	/// <param name="control">The <see cref="dfControl"/> instance for which the event was generated</param>
+	/// <param name="value">The new value of the associated property</param>
+	[dfEventProxy]
+	private void PropertyChangedProxy( dfControl control, dfPivotPoint value )
+	{
+		callProxyEventHandler();
+	}
+
+	/// <summary>
+	/// Delegate definition for control property change events
+	/// </summary>
+	/// <typeparam name="T">The data type of the property that has changed</typeparam>
+	/// <param name="control">The <see cref="dfControl"/> instance for which the event was generated</param>
+	/// <param name="value">The new value of the associated property</param>
+	[dfEventProxy]
+	private void PropertyChangedProxy( dfControl control, Texture2D value )
+	{
+		callProxyEventHandler();
+	}
+
+	/// <summary>
+	/// Delegate definition for control property change events
+	/// </summary>
+	/// <typeparam name="T">The data type of the property that has changed</typeparam>
+	/// <param name="control">The <see cref="dfControl"/> instance for which the event was generated</param>
+	/// <param name="value">The new value of the associated property</param>
+	[dfEventProxy]
+	private void PropertyChangedProxy( dfControl control, Material value )
+	{
+		callProxyEventHandler();
+	}
+
+	#endregion
+
 	#region Private utility methods
+
+	private void callProxyEventHandler()
+	{
+		if( handlerProxy != null )
+		{
+			handlerProxy.Invoke( targetComponent, null );
+		}
+	}
 
 	private FieldInfo getField( Component sourceComponent, string fieldName )
 	{
@@ -214,35 +417,58 @@ public class dfEventBinding : MonoBehaviour, IDataBindingComponent
 	/// of "notification" event handlers - Methods which either cannot make use of
 	/// or don't care about event parameters. 
 	/// </summary>
-	private Delegate createDynamicWrapper( object target, Type delegateType, ParameterInfo[] eventParams, MethodInfo eventHandler )
+	private Delegate createEventProxyDelegate( object target, Type delegateType, ParameterInfo[] eventParams, MethodInfo eventHandler )
 	{
 
-#if UNITY_IPHONE
-		throw new InvalidOperationException( "Dynamic code generation is not supported on the target platform" );
-#else
-		var paramTypes =
-			new Type[] { target.GetType() }
-			.Concat( eventParams.Select( p => p.ParameterType ) )
-			.ToArray();
+		var proxyMethod = typeof( dfEventBinding )
+			.GetMethods( BindingFlags.NonPublic | BindingFlags.Instance )
+			.Where( m =>
+				m.IsDefined( typeof( dfEventProxyAttribute ), true ) &&
+				signatureIsCompatible( eventParams, m.GetParameters() )
+			)
+			.FirstOrDefault();
 
-		var handler = new DynamicMethod(
-			"DynamicEventWrapper_" + eventHandler.Name,
-			typeof( void ),
-			paramTypes
-			);
+		if( proxyMethod == null )
+		{
+			return null;
+		}
 
-		var il = handler.GetILGenerator();
+		this.handlerProxy = eventHandler;
 
-		il.Emit( OpCodes.Ldarg_0 );
+		var eventDelegate = Delegate.CreateDelegate( delegateType, this, proxyMethod, true );
+		return eventDelegate;
 
-		// Changed from il.EmitCall() to il.Emit() for WP8 compatibility
-		il.Emit( OpCodes.Callvirt, eventHandler );
+	}
 
-		il.Emit( OpCodes.Ret );
+	private bool signatureIsCompatible( ParameterInfo[] lhs, ParameterInfo[] rhs )
+	{
 
-		return handler.CreateDelegate( delegateType, target );
+		if( lhs == null || rhs == null )
+			return false;
 
-#endif
+		if( lhs.Length != rhs.Length )
+			return false;
+
+		for( int i = 0; i < lhs.Length; i++ )
+		{
+			if( !areTypesCompatible( lhs[i], rhs[i] ) )
+				return false;
+		}
+
+		return true;
+
+	}
+
+	private bool areTypesCompatible( ParameterInfo lhs, ParameterInfo rhs )
+	{
+
+		if( lhs.ParameterType.Equals( rhs.ParameterType ) )
+			return true;
+
+		if( lhs.ParameterType.IsAssignableFrom( rhs.ParameterType ) )
+			return true;
+
+		return false;
 
 	}
 

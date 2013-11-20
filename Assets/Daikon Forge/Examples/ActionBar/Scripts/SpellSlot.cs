@@ -23,11 +23,6 @@ public class SpellSlot : MonoBehaviour
 
 	#region Private non-serialized fields 
 
-	private Texture2D dragCursor;
-	private Vector2 dragCursorOffset;
-	private Vector2 dragCursorSize;
-	private bool isDragging;
-
 	private bool isSpellActive = false;
 
 	#endregion
@@ -91,18 +86,6 @@ public class SpellSlot : MonoBehaviour
 
 	}
 
-	void OnGUI()
-	{
-
-		if( !Application.isPlaying || !isDragging ) 
-			return;
-
-		var mousePos = Input.mousePosition;
-		var cursorPos = new Rect( mousePos.x - dragCursorOffset.x, Screen.height - mousePos.y - dragCursorOffset.y, dragCursorSize.x, dragCursorSize.y );
-		GUI.Box( cursorPos, dragCursor, GUIStyle.none  );
-
-	}
-
 	#endregion
 
 	#region Event handlers 
@@ -112,6 +95,8 @@ public class SpellSlot : MonoBehaviour
 
 		if( spell.Name != this.Spell )
 			return;
+
+		Debug.Log( "Spell activated: " + spell.Name );
 
 		StartCoroutine( showCooldown() );
 
@@ -148,6 +133,7 @@ public class SpellSlot : MonoBehaviour
 				// Get the offset that will be used for the drag cursor
 				var sprite = GetComponent<dfControl>().Find( "Icon" ) as dfSprite;
 				var ray = sprite.GetCamera().ScreenPointToRay( Input.mousePosition );
+				var dragCursorOffset = Vector2.zero;
 				if( !sprite.GetHitPosition( ray, out dragCursorOffset ) )
 					return;
 
@@ -157,9 +143,7 @@ public class SpellSlot : MonoBehaviour
 				// that the application provide the visualization. We'll do that by
 				// supplying a Texture2D that will be placed at the mouse location 
 				// in the OnGUI() method. 
-				isDragging = true;
-				dragCursor = sprite.SpriteInfo.texture;
-				dragCursorSize = sprite.Size;
+				ActionbarsDragCursor.Show( sprite, Input.mousePosition, dragCursorOffset );
 
 				if( IsActionSlot )
 				{
@@ -185,7 +169,7 @@ public class SpellSlot : MonoBehaviour
 	void OnDragEnd( dfControl source, dfDragEventArgs args )
 	{
 
-		isDragging = false;
+		ActionbarsDragCursor.Hide();
 
 		if( !this.isActionSlot )
 			return;

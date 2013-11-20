@@ -67,6 +67,7 @@ public class dfPanel : dfControl
 		get { return backgroundSprite; }
 		set
 		{
+			value = getLocalizedValue( value );
 			if( value != backgroundSprite )
 			{
 				backgroundSprite = value;
@@ -99,6 +100,12 @@ public class dfPanel : dfControl
 	#endregion
 
 	#region Overrides
+
+	protected internal override void OnLocalize()
+	{
+		base.OnLocalize();
+		this.BackgroundSprite = getLocalizedValue( this.backgroundSprite );
+	}
 
 	protected internal override Plane[] GetClippingPlanes()
 	{
@@ -156,7 +163,7 @@ public class dfPanel : dfControl
 			return;
 		}
 
-		renderData.Material = Atlas.material;
+		renderData.Material = Atlas.Material;
 
 		var color = ApplyOpacity( IsEnabled ? this.color : this.disabledColor );
 		var options = new dfSprite.RenderOptions()

@@ -25,7 +25,7 @@ public class dfScrollPanel : dfControl
 
 	#endregion
 
-	#region Enumerations 
+	#region Enumerations
 
 	/// <summary>
 	/// Specifies the direction to arrange controls when flow layout is used 
@@ -93,7 +93,7 @@ public class dfScrollPanel : dfControl
 
 	#endregion
 
-	#region Private instance variables 
+	#region Private instance variables
 
 	private bool initialized = false;
 	private bool resetNeeded = false;
@@ -367,7 +367,7 @@ public class dfScrollPanel : dfControl
 
 	#endregion
 
-	#region Overrides 
+	#region Overrides
 
 	protected internal override Plane[] GetClippingPlanes()
 	{
@@ -428,7 +428,7 @@ public class dfScrollPanel : dfControl
 
 	public override void Update()
 	{
-		
+
 		base.Update();
 
 		if( useScrollMomentum && !isMouseDown )
@@ -497,7 +497,7 @@ public class dfScrollPanel : dfControl
 
 	protected internal override void OnIsVisibleChanged()
 	{
-		
+
 		base.OnIsVisibleChanged();
 
 		if( IsVisible && ( autoReset || autoLayout ) )
@@ -545,21 +545,12 @@ public class dfScrollPanel : dfControl
 	protected internal override void OnGotFocus( dfFocusEventArgs args )
 	{
 
-		base.OnGotFocus( args );
-
-		var loop = args.Source;
-		while( loop != null )
+		if( args.Source != this )
 		{
-
-			if( controls.Contains( loop ) )
-			{
-				ScrollIntoView( loop );
-				break;
-			}
-
-			loop = loop.Parent;
-
+			ScrollIntoView( args.Source );
 		}
+
+		base.OnGotFocus( args );
 
 	}
 
@@ -613,10 +604,13 @@ public class dfScrollPanel : dfControl
 		isMouseDown = true;
 	}
 
-	internal override void OnDragEnd( dfDragEventArgs args )
+	internal override void OnDragStart( dfDragEventArgs args )
 	{
-		base.OnDragEnd( args );
-		isMouseDown = false;
+		base.OnDragStart( args );
+		if( args.Used )
+		{
+			isMouseDown = false;
+		}
 	}
 
 	protected internal override void OnMouseUp( dfMouseEventArgs args )
@@ -628,17 +622,24 @@ public class dfScrollPanel : dfControl
 	protected internal override void OnMouseMove( dfMouseEventArgs args )
 	{
 
-		base.OnMouseMove( args );
-
 		if( args is dfTouchEventArgs || ( Application.isEditor && isMouseDown ) )
 		{
-			if( ( args.Position - touchStartPosition ).magnitude > 5 )
+
+			if( !args.Used && ( args.Position - touchStartPosition ).magnitude > 5 )
 			{
+
 				var delta = args.MoveDelta.Scale( -1, 1 );
+
 				ScrollPosition += delta;
-				scrollMomentum = (scrollMomentum + delta) * 0.5f;
+				scrollMomentum = ( scrollMomentum + delta ) * 0.5f;
+
+				args.Use();
+
 			}
+
 		}
+
+		base.OnMouseMove( args );
 
 	}
 
@@ -707,7 +708,7 @@ public class dfScrollPanel : dfControl
 		}
 
 	}
-	
+
 	protected override void OnRebuildRenderData()
 	{
 
@@ -720,7 +721,7 @@ public class dfScrollPanel : dfControl
 			return;
 		}
 
-		renderData.Material = Atlas.material;
+		renderData.Material = Atlas.Material;
 
 		var color = ApplyOpacity( IsEnabled ? this.color : this.disabledColor );
 		var options = new dfSprite.RenderOptions()
@@ -858,9 +859,6 @@ public class dfScrollPanel : dfControl
 	public void ScrollIntoView( dfControl control )
 	{
 
-		if( !controls.Contains( control ) )
-			return;
-
 		var viewRect = new Rect(
 			scrollPosition.x + scrollPadding.left,
 			scrollPosition.y + scrollPadding.top,
@@ -870,6 +868,12 @@ public class dfScrollPanel : dfControl
 
 		var controlPosition = control.RelativePosition;
 		var controlSize = control.Size;
+
+		while( !controls.Contains( control ) )
+		{
+			control = control.Parent;
+			controlPosition += control.RelativePosition;
+		}
 
 		var controlRect = new Rect(
 			scrollPosition.x + controlPosition.x,
@@ -904,6 +908,7 @@ public class dfScrollPanel : dfControl
 		}
 
 		ScrollPosition = newScrollPos;
+		scrollMomentum = Vector2.zero;
 
 	}
 
@@ -920,8 +925,10 @@ public class dfScrollPanel : dfControl
 
 			if( autoLayout )
 			{
-				scrollPosition = Vector2.zero;
+				var savedScrollPosition = this.ScrollPosition;
+				this.ScrollPosition = Vector2.zero;
 				AutoArrange();
+				ScrollPosition = savedScrollPosition;
 			}
 			else
 			{
@@ -936,10 +943,11 @@ public class dfScrollPanel : dfControl
 					controls[ i ].RelativePosition -= offset;
 				}
 
+				scrollPosition = Vector2.zero;
+
 			}
 
 			Invalidate();
-			scrollPosition = Vector2.zero;
 
 			updateScrollbars();
 
@@ -1197,7 +1205,7 @@ public class dfScrollPanel : dfControl
 
 	}
 
-	#region Child label events 
+	#region Child label events
 
 	private void attachEvents( dfControl control )
 	{

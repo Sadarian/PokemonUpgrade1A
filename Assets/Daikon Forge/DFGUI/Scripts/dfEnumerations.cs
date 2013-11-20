@@ -14,6 +14,25 @@ using System.Collections;
 using System.Collections.Generic;
 
 /// <summary>
+/// Specifies how auto-scaling of text will be determined
+/// </summary>
+public enum dfTextScaleMode
+{
+	/// <summary>
+	/// Do not auto-scale the text
+	/// </summary>
+	None = 0,
+	/// <summary>
+	/// Auto-scale the text based on the size of the control
+	/// </summary>
+	ControlSize,
+	/// <summary>
+	/// Auto-size the text based on the screen resolution
+	/// </summary>
+	ScreenResolution
+}
+
+/// <summary>
 /// Specifies the vertical alignment that will be used when rendering text
 /// </summary>
 public enum dfVerticalAlignment
@@ -179,6 +198,8 @@ public enum dfAnchorStyle : int
 	CenterHorizontal = 64,
 	/// <summary>The control will be vertically centered within its container</summary>
 	CenterVertical = 128,
+	/// <summary>The control layout represents proportional dimensions</summary>
+	Proportional = 256,
 	/// <summary>The control is not anchored to any edges of its container.</summary>
 	None = 0
 }

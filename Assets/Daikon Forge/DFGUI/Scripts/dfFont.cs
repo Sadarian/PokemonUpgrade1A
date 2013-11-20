@@ -15,10 +15,10 @@ using Object = UnityEngine.Object;
 
 [Serializable]
 [AddComponentMenu( "Daikon Forge/User Interface/Font Definition" )]
-public class dfFont : MonoBehaviour
+public class dfFont : dfFontBase
 {
 
-	#region Nested classes
+	#region Public nested classes
 
 	[Serializable]
 	public class GlyphKerning : IComparable<GlyphKerning>
@@ -76,13 +76,13 @@ public class dfFont : MonoBehaviour
 
 		#endregion
 
-		public int X { get { return x; } }
-		public int Y { get { return y; } }
-		public int Width { get { return width; } }
-		public int Height { get { return height; } }
-		public int XOffset { get { return xoffset; } }
-		public int YOffset { get { return yoffset; } }
-		public int XAdvance { get { return xadvance; } }
+		public int X { get { return x; } internal set { x = value; } }
+		public int Y { get { return y; } internal set { y = value; } }
+		public int Width { get { return width; } internal set { width = value; } }
+		public int Height { get { return height; } internal set { height = value; } }
+		public int XOffset { get { return xoffset; } internal set { xoffset = value; } }
+		public int YOffset { get { return yoffset; } internal set { yoffset = value; } }
+		public int XAdvance { get { return xadvance; } internal set { xadvance = value; } }
 
 		#region IComparable<Glyph> Members
 
@@ -153,7 +153,8 @@ public class dfFont : MonoBehaviour
 
 	private Dictionary<int, GlyphDefinition> glyphMap;
 
-	private Queue<TextRenderer> rendererPool = new Queue<TextRenderer>();
+	// TODO: Finish implementing common font API
+	//private Queue<BitmappedFontRenderer> rendererPool = new Queue<BitmappedFontRenderer>();
 
 	#endregion
 
@@ -179,6 +180,30 @@ public class dfFont : MonoBehaviour
 	}
 
 	/// <summary>
+	/// Gets or sets the Material that will be used to render text
+	/// </summary>
+	public override Material Material
+	{
+		get
+		{
+			return this.Atlas.Material;
+		}
+		set
+		{
+			throw new InvalidOperationException();
+		}
+	}
+
+	/// <summary>
+	/// Returns a reference to the texture which contains the
+	/// glyph images that will be used to render text
+	/// </summary>
+	public override Texture Texture
+	{
+		get { return this.Atlas.Texture; }
+	}
+
+	/// <summary>
 	/// The sprite which contains the per-rendered font graphics
 	/// </summary>
 	public string Sprite
@@ -197,7 +222,7 @@ public class dfFont : MonoBehaviour
 	/// <summary>
 	/// Returns a value indicating whether the dfFont configuration is valid
 	/// </summary>
-	public bool IsValid
+	public override bool IsValid
 	{
 		get
 		{
@@ -215,12 +240,20 @@ public class dfFont : MonoBehaviour
 	/// <summary>
 	///  The size (in pixels) of the TrueType font
 	/// </summary>
-	public int FontSize { get { return size; } }
+	public override int FontSize 
+	{ 
+		get { return size; }
+		set { throw new InvalidOperationException(); }
+	}
 
 	/// <summary>
 	/// The distance in pixels between each line of text
 	/// </summary>
-	public int LineHeight { get { return lineHeight; } }
+	public override int LineHeight 
+	{ 
+		get { return lineHeight; }
+		set { throw new InvalidOperationException(); }
+	}
 
 	/// <summary>
 	/// Indicates whether this font definition is BOLD
@@ -265,9 +298,9 @@ public class dfFont : MonoBehaviour
 
 	#region Public methods
 
-	public TextRenderer ObtainRenderer()
+	public override dfFontRendererBase ObtainRenderer()
 	{
-		return rendererPool.Count > 0 ? rendererPool.Dequeue() : new TextRenderer( this );
+		return BitmappedFontRenderer.Obtain( this );
 	}
 
 	public void AddKerning( int first, int second, int amount )
@@ -275,7 +308,7 @@ public class dfFont : MonoBehaviour
 		kerning.Add( new GlyphKerning() { first = first, second = second, amount = amount } );
 	}
 
-	public int GetKerning( int previousChar, int currentChar )
+	public override int GetKerning( char previousChar, char currentChar )
 	{
 
 		for( int i = 0; i < kerning.Count; i++ )
@@ -289,7 +322,7 @@ public class dfFont : MonoBehaviour
 
 	}
 
-	public GlyphDefinition GetGlyph( int id )
+	public override GlyphDefinition GetGlyph( char id )
 	{
 
 		#region Build glyph dictionary "on demand"
@@ -320,8 +353,14 @@ public class dfFont : MonoBehaviour
 
 	#region TextRenderer class
 
-	public class TextRenderer : IDisposable
+	public class BitmappedFontRenderer : dfFontRendererBase
 	{
+
+		#region Object pooling 
+
+		private static Queue<BitmappedFontRenderer> objectPool = new Queue<BitmappedFontRenderer>();
+
+		#endregion
 
 		#region Static variables and constants
 
@@ -337,33 +376,6 @@ public class dfFont : MonoBehaviour
 
 		#region Public properties
 
-		public dfFont Font { get; protected set; }
-		public Vector2 MaxSize { get; set; }
-		public float PixelRatio { get; set; }
-		public float TextScale { get; set; }
-		public int CharacterSpacing { get; set; }
-		public Vector3 VectorOffset { get; set; }
-		public bool ProcessMarkup { get; set; }
-		public bool WordWrap { get; set; }
-		public bool MultiLine { get; set; }
-		public bool OverrideMarkupColors { get; set; }
-		public bool ColorizeSymbols { get; set; }
-		public TextAlignment TextAlign { get; set; }
-		public Color32 DefaultColor { get; set; }
-		public Color32? BottomColor { get; set; }
-		public float Opacity { get; set; }
-		public bool Outline { get; set; }
-		public int OutlineSize { get; set; }
-		public Color32 OutlineColor { get; set; }
-		public bool Shadow { get; set; }
-		public Color32 ShadowColor { get; set; }
-		public Vector2 ShadowOffset { get; set; }
-		public int TabSize { get; set; }
-		public List<int> TabStops { get; set; }
-
-		public Vector2 RenderedSize { get; private set; }
-		public int LinesRendered { get; private set; }
-
 		public int LineCount { get { return lines.Count; } }
 
 		#endregion
@@ -378,42 +390,44 @@ public class dfFont : MonoBehaviour
 
 		#region Constructors
 
-		private TextRenderer()
+		internal BitmappedFontRenderer()
 		{
-			// Disallow direct object creation
-			throw new NotImplementedException();
-		}
-
-		internal TextRenderer( dfFont font )
-		{
-			this.Font = font;
 		}
 
 		#endregion
 
 		#region Public methods
 
-		public void Release()
+		public static dfFontRendererBase Obtain( dfFont font )
 		{
+			
+			var renderer = objectPool.Count > 0 ? objectPool.Dequeue() : new BitmappedFontRenderer();
+			renderer.Font = font;
+
+			return renderer;
+
+		}
+
+		public override void Release()
+		{
+
+			this.Reset();
+			
 			this.lines.Clear();
 			this.glyphs.Clear();
 			this.BottomColor = (Color32?)null;
-			this.Font.rendererPool.Enqueue( this );
+			
+			objectPool.Enqueue( this );
+
 		}
 
-		public string GetLine( int lineIndex )
-		{
-			var line = lines[ lineIndex ];
-			return text.Substring( line.startOffset, line.length );
-		}
-
-		public float[] GetCharacterWidths( string text )
+		public override float[] GetCharacterWidths( string text )
 		{
 			var totalWidth = 0f;
 			return GetCharacterWidths( text, out totalWidth );
 		}
 
-		public float[] GetCharacterWidths( string text, out float totalWidth )
+		public override float[] GetCharacterWidths( string text, out float totalWidth )
 		{
 
 			totalWidth = 0f;
@@ -421,7 +435,7 @@ public class dfFont : MonoBehaviour
 			var output = new float[ text.Length ];
 
 			var scale = TextScale * PixelRatio;
-			var horzSpacing = ( Font.spacing[ 0 ] + CharacterSpacing ) * scale;
+			var horzSpacing = CharacterSpacing * scale;
 
 			for( int i = 0; i < text.Length; i++ )
 			{
@@ -447,11 +461,11 @@ public class dfFont : MonoBehaviour
 
 		}
 
-		public Vector2 GetCharRenderPosition( int offset, ref float charWidth )
+		public override Vector2 GetCharRenderPosition( int offset, ref float charWidth )
 		{
 
-			var horzSpacing = ( Font.spacing[ 0 ] + CharacterSpacing ) * TextScale * PixelRatio;
-			var vertSpacing = Font.spacing[ 1 ] * TextScale * PixelRatio;
+			var horzSpacing = CharacterSpacing * TextScale * PixelRatio;
+			var vertSpacing = 0;
 			var top = 0f;
 
 			var lineIndex = 0;
@@ -498,20 +512,8 @@ public class dfFont : MonoBehaviour
 		/// </summary>
 		/// <param name="text"></param>
 		/// <returns></returns>
-		public Vector2 MeasureString( string text )
+		public override Vector2 MeasureString( string text )
 		{
-
-			if( Font.Atlas == null )
-			{
-				throw new Exception( "No Texture Atlas assigned to Font " + Font.name );
-			}
-
-			var atlas = Font.Atlas;
-			var sprite = atlas[ Font.Sprite ];
-			if( sprite == null )
-			{
-				throw new Exception( "Font sprite not found in Texture Atlas " + Font.Atlas.name + "/" + Font.Sprite );
-			}
 
 			this.text = preprocess( text );
 			if( glyphs.Count == 0 )
@@ -519,9 +521,11 @@ public class dfFont : MonoBehaviour
 				throw new Exception( "No glyphs found for font: " + Font.name );
 			}
 
+			var texture = Font.Texture;
+
 			var ratio = PixelRatio * TextScale;
-			var horzSpacing = ( Font.Spacing[ 0 ] + CharacterSpacing ) * ratio;
-			var vertSpacing = Font.Spacing[ 1 ] * ratio;
+			var horzSpacing = CharacterSpacing * ratio;
+			var vertSpacing = 0;
 			var lineHeight = Font.LineHeight * ratio;
 			var renderedWidth = 0f;
 			var renderedHeight = 0f;
@@ -550,7 +554,7 @@ public class dfFont : MonoBehaviour
 						if( spriteInfo == null )
 							continue;
 
-						var aspectRatio = ( spriteInfo.region.width * atlas.Texture.width ) / ( spriteInfo.region.height * atlas.Texture.height );
+						var aspectRatio = ( spriteInfo.region.width * texture.width ) / ( spriteInfo.region.height * texture.height );
 						var spriteWidth = lineHeight * aspectRatio;
 
 						x += spriteWidth;
@@ -588,32 +592,14 @@ public class dfFont : MonoBehaviour
 
 		}
 
-		private float getTabStop( float position )
-		{
-
-			var scale = PixelRatio * TextScale;
-
-			if( TabStops != null && TabStops.Count > 0 )
-			{
-				for( int i = 0; i < TabStops.Count; i++ )
-				{
-					if( TabStops[ i ] * scale > position )
-						return TabStops[ i ] * scale;
-				}
-			}
-
-			if( TabSize > 0 )
-				return position + TabSize * scale;
-
-			return position + ( this.Font.FontSize * 4 * scale );
-
-		}
-
-		public void Render( string text, dfRenderData destination )
+		public override void Render( string text, dfRenderData destination )
 		{
 
 			if( string.IsNullOrEmpty( text ) )
 				return;
+
+			var font = (dfFont)Font;
+			var sprite = font.Atlas[ font.sprite ];
 
 			// Ensure that the buffer already has enough memory allocated to 
 			// hold the rendered text, to reduce memory thrashing.
@@ -622,18 +608,6 @@ public class dfFont : MonoBehaviour
 
 			RenderedSize = Vector2.zero;
 			LinesRendered = 0;
-
-			if( Font.Atlas == null )
-			{
-				throw new Exception( "No Texture Atlas assigned to Font " + Font.name );
-			}
-
-			var atlas = Font.Atlas;
-			var sprite = atlas[ Font.Sprite ];
-			if( sprite == null )
-			{
-				throw new Exception( "Font sprite not found in Texture Atlas " + Font.Atlas.name + "/" + Font.Sprite );
-			}
 
 			this.text = preprocess( text );
 			if( glyphs.Count == 0 )
@@ -647,8 +621,9 @@ public class dfFont : MonoBehaviour
 			var colors = destination.Colors;
 			var uvs = destination.UV;
 
-			var uvw = 1f / atlas.Texture.width;
-			var uvh = 1f / atlas.Texture.height;
+			var texture = Font.Texture;
+			var uvw = 1f / texture.width;
+			var uvh = 1f / texture.height;
 			var uvxofs = uvw * 0.125f;
 			var uvyofs = uvh * 0.125f;
 
@@ -656,8 +631,8 @@ public class dfFont : MonoBehaviour
 			var y = 0f;
 
 			var ratio = PixelRatio * TextScale;
-			var horzSpacing = ( Font.Spacing[ 0 ] + CharacterSpacing ) * ratio;
-			var vertSpacing = Font.Spacing[ 1 ] * ratio;
+			var horzSpacing = CharacterSpacing * ratio;
+			var vertSpacing = 0;
 			var lineHeight = Font.LineHeight * ratio;
 
 			var horzRenderLimit = MaxSize.x * PixelRatio;
@@ -690,7 +665,7 @@ public class dfFont : MonoBehaviour
 						if( spriteInfo == null )
 							continue;
 
-						var aspectRatio = ( spriteInfo.region.width * atlas.Texture.width ) / ( spriteInfo.region.height * atlas.Texture.height );
+						var aspectRatio = ( spriteInfo.region.width * texture.width ) / ( spriteInfo.region.height * texture.height );
 						var spriteWidth = lineHeight * aspectRatio;
 						var sti = verts.Count;
 
@@ -752,8 +727,8 @@ public class dfFont : MonoBehaviour
 					var width = glyph.width * ratio;
 					var height = glyph.height * ratio;
 
-					var quadRight = ( xofs + width ).RoundToNearest( PixelRatio );
-					var quadBottom = ( yofs - height ).RoundToNearest( PixelRatio );
+					var quadRight = ( xofs + width );//.RoundToNearest( PixelRatio );
+					var quadBottom = ( yofs - height );//.RoundToNearest( PixelRatio );
 
 					var v0 = ( VectorOffset + new Vector3( xofs, yofs ) );
 					var v1 = ( VectorOffset + new Vector3( quadRight, yofs ) );
@@ -861,6 +836,10 @@ public class dfFont : MonoBehaviour
 
 		}
 
+		#endregion
+
+		#region Private utility methods
+
 		private void clipRight( dfRenderData destination, int startIndex )
 		{
 
@@ -898,6 +877,27 @@ public class dfFont : MonoBehaviour
 				}
 
 			}
+
+		}
+
+		private float getTabStop( float position )
+		{
+
+			var scale = PixelRatio * TextScale;
+
+			if( TabStops != null && TabStops.Count > 0 )
+			{
+				for( int i = 0; i < TabStops.Count; i++ )
+				{
+					if( TabStops[ i ] * scale > position )
+						return TabStops[ i ] * scale;
+				}
+			}
+
+			if( TabSize > 0 )
+				return position + TabSize * scale;
+
+			return position + ( this.Font.FontSize * 4 * scale );
 
 		}
 
@@ -944,10 +944,6 @@ public class dfFont : MonoBehaviour
 
 		}
 
-		#endregion
-
-		#region Private utility methods
-
 		private float calculateLineAlignment( LineRenderInfo line )
 		{
 
@@ -959,7 +955,7 @@ public class dfFont : MonoBehaviour
 
 			if( TextAlign == TextAlignment.Right )
 			{
-				var horzSpacing = Mathf.Max( Font.spacing[ 0 ] + CharacterSpacing, 2 ) * TextScale;
+				var horzSpacing = Mathf.Max( CharacterSpacing, 2 ) * TextScale;
 				var rightAlign = ( MaxSize.x - line.lineWidth - horzSpacing ) * PixelRatio;
 				return rightAlign.Quantize( PixelRatio );
 			}
@@ -1051,7 +1047,7 @@ public class dfFont : MonoBehaviour
 							textOffset = i
 						};
 
-						markup.ApplyMarkup( Font, i, spriteGlyph );
+						markup.ApplyMarkup( (dfFont)Font, i, spriteGlyph );
 
 						// Ensure that opacity is applied in all cases
 						if( OverrideMarkupColors || !ColorizeSymbols )
@@ -1116,7 +1112,7 @@ public class dfFont : MonoBehaviour
 
 				if( markup != null )
 				{
-					markup.ApplyMarkup( Font, i, glyphInfo );
+					markup.ApplyMarkup( (dfFont)Font, i, glyphInfo );
 				}
 
 				// Ensure that opacity is applied in all cases
@@ -1188,7 +1184,7 @@ public class dfFont : MonoBehaviour
 
 			var widths = GetCharacterWidths( text );
 			var maxWidth = MaxSize.x * PixelRatio;
-			var horzSpacing = Font.spacing[ 0 ] * PixelRatio;
+			var horzSpacing = CharacterSpacing * PixelRatio;
 
 			var lineWidth = 0f;
 			for( int i = 0; i < text.Length; i++ )
@@ -1212,7 +1208,7 @@ public class dfFont : MonoBehaviour
 		private void measureLines()
 		{
 
-			var horzSpacing = ( Font.spacing[ 0 ] + CharacterSpacing ) * TextScale;
+			var horzSpacing = CharacterSpacing * TextScale;
 
 			for( int li = 0; li < lines.Count; li++ )
 			{
@@ -1255,7 +1251,7 @@ public class dfFont : MonoBehaviour
 			var lastBreak = 0;
 			var index = 0;
 			var length = text.Length;
-			var horzSpacing = ( Font.spacing[ 0 ] + CharacterSpacing ) * TextScale;
+			var horzSpacing = CharacterSpacing * TextScale;
 
 			var lineWidth = 0f;
 			var maxLineWidth = 0f;
@@ -1347,7 +1343,7 @@ public class dfFont : MonoBehaviour
 
 			lines.Clear();
 
-			int horzSpacing = Font.spacing[ 0 ] + CharacterSpacing;
+			int horzSpacing = CharacterSpacing;
 
 			var renderWidth = 0f;
 			var lineStart = 0;
@@ -1373,15 +1369,6 @@ public class dfFont : MonoBehaviour
 				lines.Add( new LineRenderInfo( lineStart, text.Length - 1 ) );
 			}
 
-		}
-
-		#endregion
-
-		#region IDisposable Members
-
-		public void Dispose()
-		{
-			this.Release();
 		}
 
 		#endregion

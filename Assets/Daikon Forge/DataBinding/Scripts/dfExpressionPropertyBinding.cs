@@ -141,7 +141,7 @@ public class dfExpressionPropertyBinding : MonoBehaviour, IDataBindingComponent
 		// A dfProxyDataObject might legitimately have a NULL value at scene
 		// startup, so just skip binding for now if that's the case. This assumes
 		// that the proxy object will have its value set when it's initialized
-		// but that label startup order is not consistent.
+		// but that control startup order is not consistent.
 		if( DataSource is dfDataObjectProxy && ( (dfDataObjectProxy)DataSource ).Data == null )
 			return;
 

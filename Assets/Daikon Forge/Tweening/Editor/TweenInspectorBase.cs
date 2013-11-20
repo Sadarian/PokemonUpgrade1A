@@ -281,6 +281,12 @@ public class TweenInspectorBase : Editor
 	{
 
 		var gameObject = ( (Component)target ).gameObject;
+
+		if( target is dfTweenRotation )
+		{
+			return gameObject.transform;
+		}
+
 		var control = gameObject.GetComponent<dfControl>();
 		if( control != null )
 			return control;

@@ -266,6 +266,10 @@ public class ProxyPropertyBindingEditor : Editor
 		for( int i = 0; i < scripts.Length; i++ )
 		{
 
+			// Fix for Unity bug that crashes the Editor
+			if( scripts[ i ].GetType() != typeof( MonoScript ) )
+				continue;
+
 			var scriptClass = scripts[ i ].GetClass();
 			if( scriptClass == null )
 				continue;

@@ -103,6 +103,9 @@ public class dfButton : dfInteractiveBase
 	protected float textScale = 1f;
 
 	[SerializeField]
+	protected dfTextScaleMode textScaleMode = dfTextScaleMode.None;
+
+	[SerializeField]
 	protected bool wordWrap = false;
 
 	[SerializeField]
@@ -275,15 +278,8 @@ public class dfButton : dfInteractiveBase
 		}
 		set
 		{
-			if( Atlas != null && value != this.font )
+			if( value != this.font )
 			{
-				if( value != null )
-				{
-					if( atlas.material != value.Atlas.material )
-					{
-						throw new ArgumentException( "The assigned Font must use the same Atlas as the control" );
-					}
-				}
 				this.font = value;
 			}
 			Invalidate();
@@ -300,7 +296,7 @@ public class dfButton : dfInteractiveBase
 		{
 			if( value != this.text )
 			{
-				this.text = value;
+				this.text = getLocalizedValue( value );
 				Invalidate();
 			}
 		}
@@ -395,6 +391,16 @@ public class dfButton : dfInteractiveBase
 	}
 
 	/// <summary>
+	/// Gets or sets whether the TextScale property will be automatically 
+	/// adjusted to match runtime screen resolution
+	/// </summary>
+	public dfTextScaleMode TextScaleMode
+	{
+		get { return this.textScaleMode; }
+		set { this.textScaleMode = value; Invalidate(); }
+	}
+
+	/// <summary>
 	/// Gets or sets whether the button's caption will be word-wrapped
 	/// when too long to fit as a single line of text
 	/// </summary>
@@ -464,7 +470,19 @@ public class dfButton : dfInteractiveBase
 
 	#endregion 
 
-	#region Overrides and event handling 
+	#region Private runtime variables 
+
+	private Vector2 startSize = Vector2.zero;
+
+	#endregion
+
+	#region Overrides and event handling
+
+	protected internal override void OnLocalize()
+	{
+		base.OnLocalize();
+		this.Text = getLocalizedValue( this.text );
+	}
 
 	public override void Invalidate()
 	{
@@ -498,6 +516,12 @@ public class dfButton : dfInteractiveBase
 
 	}
 
+	public override void Awake()
+	{
+		base.Awake();
+		startSize = Size;
+	}
+
 	public override void Update()
 	{
 		base.Update();
@@ -523,8 +547,8 @@ public class dfButton : dfInteractiveBase
 
 	protected internal override void OnKeyPress( dfKeyEventArgs args )
 	{
-	
-		if( args.KeyCode == KeyCode.Space )
+
+		if( this.IsInteractive && args.KeyCode == KeyCode.Space )
 		{
 			OnClick( new dfMouseEventArgs( this, dfMouseButtons.Left, 1, new Ray(), Vector2.zero, 0 ) );
 			return;
@@ -578,16 +602,17 @@ public class dfButton : dfInteractiveBase
 	protected internal override void OnMouseUp( dfMouseEventArgs args )
 	{
 
+#if !UNITY_IPHONE && !UNITY_ANDROID
+		if( isMouseHovering )
+		{
+			this.State = ButtonState.Hover;
+		}
+		else
+#endif
 		if( HasFocus )
 		{
 			this.State = ButtonState.Focus;
 		}
-#if !UNITY_IPHONE && !UNITY_ANDROID
-		else if( isMouseHovering )
-		{
-			this.State = ButtonState.Hover;
-		}
-#endif
 		else
 		{
 			this.State = ButtonState.Default;
@@ -663,7 +688,7 @@ public class dfButton : dfInteractiveBase
 		if( Atlas == null )
 			return;
 
-		renderData.Material = Atlas.material;
+		renderData.Material = Atlas.Material;
 
 		renderBackground();
 		renderText();
@@ -677,7 +702,7 @@ public class dfButton : dfInteractiveBase
 	private void autoSizeToText()
 	{
 
-		if( Font == null || Font.Atlas == null || string.IsNullOrEmpty( Text ) )
+		if( Font == null || !Font.IsValid || string.IsNullOrEmpty( Text ) )
 			return;
 
 		using( var textRenderer = obtainTextRenderer() )
@@ -695,7 +720,7 @@ public class dfButton : dfInteractiveBase
 	private void renderText()
 	{
 
-		if( Font == null || Font.Atlas == null || string.IsNullOrEmpty( Text ) )
+		if( Font == null || !Font.IsValid || string.IsNullOrEmpty( Text ) )
 			return;
 
 		using( var textRenderer = obtainTextRenderer() )
@@ -705,7 +730,7 @@ public class dfButton : dfInteractiveBase
 
 	}
 
-	private dfFont.TextRenderer obtainTextRenderer()
+	private dfFontRendererBase obtainTextRenderer()
 	{
 
 		var p2u = PixelsToUnits();
@@ -724,13 +749,15 @@ public class dfButton : dfInteractiveBase
 
 		var renderColor = ApplyOpacity( getTextColorForState() );
 
+		var scaleMultiplier = getTextScaleMultiplier();
+		
 		var textRenderer = font.ObtainRenderer();
 
 		textRenderer.WordWrap = wordWrap;
 		textRenderer.MultiLine = wordWrap;
 		textRenderer.MaxSize = maxSize;
 		textRenderer.PixelRatio = p2u;
-		textRenderer.TextScale = TextScale;
+		textRenderer.TextScale = TextScale * scaleMultiplier;
 		textRenderer.VectorOffset = origin;
 		textRenderer.TextAlign = TextAlignment;
 		textRenderer.ProcessMarkup = true;
@@ -748,6 +775,28 @@ public class dfButton : dfInteractiveBase
 
 		return textRenderer;
 
+	}
+
+	private float getTextScaleMultiplier()
+	{
+
+		if( textScaleMode == dfTextScaleMode.None || !Application.isPlaying )
+			return 1f;
+
+		// Return the difference between design resolution and current resolution
+		if( textScaleMode == dfTextScaleMode.ScreenResolution )
+		{
+			return (float)Screen.height / (float)manager.FixedHeight;
+		}
+
+		// Cannot scale by control size if AutoSize is enabled
+		if( autoSize )
+		{
+			return 1f;
+		}
+
+		return Size.y / startSize.y;
+					
 	}
 
 	private Color32 getTextColorForState()
@@ -774,7 +823,7 @@ public class dfButton : dfInteractiveBase
 
 	}
 
-	private Vector3 getVertAlignOffset( dfFont.TextRenderer textRenderer )
+	private Vector3 getVertAlignOffset( dfFontRendererBase textRenderer )
 	{
 
 		var p2u = PixelsToUnits();

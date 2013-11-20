@@ -81,6 +81,13 @@ public class dfLabelInspector : dfControlInspector
 				control.TextScale = scale;
 			}
 
+			var scaleMode = (dfTextScaleMode)EditorGUILayout.EnumPopup( "Auto Scale", control.TextScaleMode );
+			if( scaleMode != control.TextScaleMode )
+			{
+				dfEditorUtil.MarkUndo( control, "Change Text Scale Mode" );
+				control.TextScaleMode = scaleMode;
+			}
+
 			var spacing = EditorGUILayout.IntField( "Char Spacing", control.CharacterSpacing );
 			if( spacing != control.CharacterSpacing )
 			{
@@ -290,6 +297,7 @@ public class dfLabelInspector : dfControlInspector
 
 		}
 
+		var showDialog = false;
 		GUILayout.Label( "Text", "HeaderLabel" );
 		{
 
@@ -301,6 +309,22 @@ public class dfLabelInspector : dfControlInspector
 				control.Text = text;
 			}
 
+			if( GUILayout.Button( "Open Editor" ) )
+			{
+				showDialog = true;
+			}
+
+		}
+
+		// Moved the dialog display code outside of all grouping code to resolve
+		// an InvalidOperationException that happens in some circumstances and 
+		// appears to be Mac-specific
+		if( showDialog )
+		{
+			dfTextEditorWindow.Show( "Edit Label Text", control.Text, ( text ) =>
+			{
+				control.Text = text;
+			} );
 		}
 
 		return true;

@@ -15,6 +15,8 @@ using System.Collections.Generic;
 public class dfGUICamera : MonoBehaviour
 {
 
+	// http://answers.unity3d.com/questions/217941/onenable-awake-start-order.html
+
 	public void Awake() { }
 	public void OnEnable() { }
 

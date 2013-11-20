@@ -65,6 +65,9 @@ public class dfLabel : dfControl
 	protected float textScale = 1f;
 
 	[SerializeField]
+	protected dfTextScaleMode textScaleMode = dfTextScaleMode.None;
+
+	[SerializeField]
 	protected int charSpacing = 0;
 
 	[SerializeField]
@@ -199,6 +202,16 @@ public class dfLabel : dfControl
 	}
 
 	/// <summary>
+	/// Gets or sets whether the TextScale property will be automatically 
+	/// adjusted to match runtime screen resolution
+	/// </summary>
+	public dfTextScaleMode TextScaleMode
+	{
+		get { return this.textScaleMode; }
+		set { this.textScaleMode = value; Invalidate(); }
+	}
+
+	/// <summary>
 	/// Gets or sets the amount of additional spacing (in pixels) that will 
 	/// be applied when rendering the text
 	/// </summary>
@@ -294,7 +307,7 @@ public class dfLabel : dfControl
 			value = value.Replace( "\\t", "\t" );
 			if( !string.Equals( value, this.text ) )
 			{
-				this.text = value;
+				this.text = this.getLocalizedValue( value );
 				OnTextChanged();
 			}
 		}
@@ -533,7 +546,19 @@ public class dfLabel : dfControl
 
 	#endregion
 
-	#region Event handlers 
+	#region Private runtime variables
+
+	private Vector2 startSize = Vector2.zero;
+
+	#endregion
+
+	#region Base class overrides
+
+	protected internal override void OnLocalize()
+	{
+		base.OnLocalize();
+		this.Text = getLocalizedValue( this.text );
+	}
 
 	protected internal void OnTextChanged()
 	{
@@ -594,6 +619,12 @@ public class dfLabel : dfControl
 
 	}
 
+	public override void Awake()
+	{
+		base.Awake();
+		startSize = Application.isPlaying ? this.Size : Vector2.zero;
+	}
+
 	#endregion
 
 	#region Private utility methods
@@ -632,15 +663,18 @@ public class dfLabel : dfControl
 
 			var renderSize = textRenderer.MeasureString( this.text ).RoundToInt();
 
+			// NOTE: Assignment to private field 'size' rather than the 'Size' property
+			// below is intentional. Not only do we not need the full host of actions
+			// that would be caused by assigning to the property, but doing so actually
+			// causes issues: http://daikonforge.com/issues/view.php?id=37
+
 			if( AutoSize || sizeIsUninitialized )
 			{
-				Size = renderSize + new Vector2( padding.horizontal, padding.vertical );
-				updateCollider();
+				this.size = renderSize + new Vector2( padding.horizontal, padding.vertical );
 			}
 			else if( AutoHeight )
 			{
-				Size = new Vector2( size.x, renderSize.y + padding.vertical );
-				updateCollider();
+				this.size = new Vector2( size.x, renderSize.y + padding.vertical );
 			}
 
 		}
@@ -650,56 +684,68 @@ public class dfLabel : dfControl
 	protected override void OnRebuildRenderData()
 	{
 
-		if( this.Font == null || !this.Font.IsValid )
-			return;
-
-		renderData.Material = Font.Atlas.material;
-
-		renderBackground();
-
-		if( string.IsNullOrEmpty( this.Text ) )
-			return;
-
-		var sizeIsUninitialized = ( size.sqrMagnitude <= float.Epsilon );
-
-		using( var textRenderer = obtainRenderer() )
+		try
 		{
 
-			textRenderer.Render( text, renderData );
+			Profiler.BeginSample( "Render label" );
 
-			if( AutoSize || sizeIsUninitialized )
+			if( this.Font == null || !this.Font.IsValid )
+				return;
+
+			renderData.Material = Font.Material;
+
+			renderBackground();
+
+			if( string.IsNullOrEmpty( this.Text ) )
+				return;
+
+			var sizeIsUninitialized = ( size.sqrMagnitude <= float.Epsilon );
+
+			using( var textRenderer = obtainRenderer() )
 			{
-				Size = textRenderer.RenderedSize.RoundToInt() + new Vector2( padding.horizontal, padding.vertical );
-				updateCollider();
-			}
-			else if( AutoHeight )
-			{
-				Size = new Vector2( size.x, textRenderer.RenderedSize.y + padding.vertical ).RoundToInt();
-				updateCollider();
+
+				textRenderer.Render( text, renderData );
+
+				if( AutoSize || sizeIsUninitialized )
+				{
+					Size = textRenderer.RenderedSize + new Vector2( padding.horizontal, padding.vertical );
+				}
+				else if( AutoHeight )
+				{
+					Size = new Vector2( size.x, textRenderer.RenderedSize.y + padding.vertical ).RoundToInt();
+				}
+
 			}
 
+		}
+		finally
+		{
+			this.isControlInvalidated = false;
+			Profiler.EndSample();
 		}
 
 	}
 
-	private dfFont.TextRenderer obtainRenderer()
+	private dfFontRendererBase obtainRenderer()
 	{
 
-		var sizeIsUninitialized = ( size.sqrMagnitude <= float.Epsilon );
+		var sizeIsUninitialized = ( Size.sqrMagnitude <= float.Epsilon );
 
 		var clientSize = this.Size - new Vector2( padding.horizontal, padding.vertical );
 
-		var effectiveSize = ( this.autoSize || sizeIsUninitialized ) ? Vector2.one * 4096 : clientSize;
+		var effectiveSize = ( this.autoSize || sizeIsUninitialized ) ? getAutoSizeDefault() : clientSize;
 		if( autoHeight ) effectiveSize = new Vector2( clientSize.x, 4096 );
 
 		var p2u = PixelsToUnits();
 		var origin = ( pivot.TransformToUpperLeft( Size ) + new Vector3( padding.left, -padding.top ) ) * p2u;
 
+		var effectiveTextScale = TextScale * getTextScaleMultiplier();
+
 		var textRenderer = Font.ObtainRenderer();
 		textRenderer.WordWrap = this.WordWrap;
 		textRenderer.MaxSize = effectiveSize;
 		textRenderer.PixelRatio = p2u;
-		textRenderer.TextScale = TextScale;
+		textRenderer.TextScale = effectiveTextScale;
 		textRenderer.CharacterSpacing = CharacterSpacing;
 		textRenderer.VectorOffset = origin.Quantize( p2u );
 		textRenderer.MultiLine = true;
@@ -728,7 +774,41 @@ public class dfLabel : dfControl
 	
 	}
 
-	private Vector3 getVertAlignOffset( dfFont.TextRenderer textRenderer )
+	private float getTextScaleMultiplier()
+	{
+
+		if( textScaleMode == dfTextScaleMode.None || !Application.isPlaying )
+			return 1f;
+
+		// Return the difference between design resolution and current resolution
+		if( textScaleMode == dfTextScaleMode.ScreenResolution )
+		{
+			return (float)Screen.height / (float)manager.FixedHeight;
+		}
+
+		// Cannot scale by control size if AutoSize is enabled
+		if( autoSize )
+		{
+			return 1f;
+		}
+
+		return Size.y / startSize.y;
+
+	}
+
+	private Vector2 getAutoSizeDefault()
+	{
+
+		var maxWidth = this.maxSize.x > float.Epsilon ? this.maxSize.x : 4096;
+		var maxHeight = this.maxSize.y > float.Epsilon ? this.maxSize.y : 4096;
+
+		var maxSize = new Vector2( maxWidth, maxHeight );
+
+		return maxSize;
+
+	}
+
+	private Vector3 getVertAlignOffset( dfFontRendererBase textRenderer )
 	{
 
 		var p2u = PixelsToUnits();

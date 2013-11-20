@@ -698,7 +698,7 @@ public class dfDropdown : dfInteractiveBase
 		if( Atlas == null || Font == null || string.IsNullOrEmpty( backgroundSprite ) )
 			return;
 
-		renderData.Material = Atlas.material;
+		renderData.Material = Atlas.Material;
 
 		renderBackground();
 		renderText();
@@ -737,7 +737,7 @@ public class dfDropdown : dfInteractiveBase
 			textRenderer.TextAlign = TextAlignment.Left;
 			textRenderer.ProcessMarkup = true;
 			textRenderer.DefaultColor = renderColor;
-			textRenderer.OverrideMarkupColors = true;
+			textRenderer.OverrideMarkupColors = false;
 			textRenderer.Opacity = this.CalculateOpacity();
 			textRenderer.Shadow = this.Shadow;
 			textRenderer.ShadowColor = this.ShadowColor;

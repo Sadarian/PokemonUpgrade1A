@@ -73,7 +73,7 @@ public class dfSlicedSprite : dfSprite
 			return;
 		}
 
-		renderData.Material = Atlas.material;
+		renderData.Material = Atlas.Material;
 
 		if( spriteInfo.border.horizontal == 0 || spriteInfo.border.vertical == 0 )
 		{
@@ -114,9 +114,6 @@ public class dfSlicedSprite : dfSprite
 
 		if( options.spriteInfo == null )
 			throw new ArgumentNullException( "The Sprite cannot be null" );
-
-		if( options.spriteInfo.texture == null )
-			throw new ArgumentNullException( "The sprite's texture is null or has been deleted" );
 
 #endif
 

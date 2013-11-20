@@ -23,6 +23,7 @@ public class dfTextureAtlasInspector : Editor
 
 	#region Private fields
 
+	private Dictionary<string, bool> selectedTextures = new Dictionary<string, bool>();
 	private static Texture2D lineTex;
 
 	#endregion
@@ -34,221 +35,261 @@ public class dfTextureAtlasInspector : Editor
 	public static void CreateAtlasFromSelection()
 	{
 
-		var selection = Selection
-			.GetFiltered( typeof( Texture2D ), SelectionMode.Assets )
-			.Cast<Texture2D>()
-			.Where( t => isReadable( t ) )
-			.OrderBy( t => t.name )
-			.ToArray();
-
-		if( selection.Length == 0 )
-		{
-			EditorUtility.DisplayDialog( "Create Texture Atlas", "Either no textures selected or none of the selected textures has Read/Write enabled", "OK" );
-			return;
-		}
-
-		var saveFolder = Path.GetDirectoryName( AssetDatabase.GetAssetPath( selection[ 0 ] ) );
-		var prefabPath = EditorUtility.SaveFilePanel( "Create Font Definition", saveFolder, "Texture Atlas", "prefab" );
-		if( string.IsNullOrEmpty( prefabPath ) )
-			return;
-
-		prefabPath = prefabPath.MakeRelativePath();
-
-		var texture = new Texture2D( 1, 1, TextureFormat.ARGB32, false );
-		var rects = texture.PackTextures( selection, 2, 4096 );
-
-		var texturePath = Path.ChangeExtension( prefabPath, "png" );
-		byte[] bytes = texture.EncodeToPNG();
-		System.IO.File.WriteAllBytes( texturePath, bytes );
-		bytes = null;
-		DestroyImmediate( texture );
-
-		setTextureImportSettings( texturePath, FilterMode.Bilinear );
-
-		texture = AssetDatabase.LoadAssetAtPath( texturePath, typeof( Texture2D ) ) as Texture2D;
-		if( texture == null )
-			Debug.LogError( "Failed to find texture at " + texturePath );
-
-		var sprites = new List<dfAtlas.ItemInfo>();
-		for( int i = 0; i < rects.Length; i++ )
+		try
 		{
 
-			var pixelCoords = rects[ i ];
+			EditorUtility.DisplayProgressBar( "Creating Texture Atlas", "Adding selected textures to the Texture Atlas", 0 );
 
-			var item = new dfAtlas.ItemInfo()
+			var selection = Selection
+				.GetFiltered( typeof( Texture2D ), SelectionMode.Assets )
+				.Cast<Texture2D>()
+				.Where( t => isReadable( t ) )
+				.OrderByDescending( t => t.width * t.height )
+				.ToArray();
+
+			if( selection.Length == 0 )
 			{
-				name = selection[ i ].name,
-				region = pixelCoords,
-				rotated = false,
-				texture = selection[ i ]
+				EditorUtility.DisplayDialog( "Create Texture Atlas", "Either no textures selected or none of the selected textures has Read/Write enabled", "OK" );
+				return;
+			}
+
+			var saveFolder = Path.GetDirectoryName( AssetDatabase.GetAssetPath( selection[ 0 ] ) );
+			var prefabPath = EditorUtility.SaveFilePanel( "Create Font Definition", saveFolder, "Texture Atlas", "prefab" );
+			if( string.IsNullOrEmpty( prefabPath ) )
+				return;
+
+			prefabPath = prefabPath.MakeRelativePath();
+
+			var padding = EditorPrefs.GetInt( "DaikonForge.AtlasDefaultPadding", 2 );
+
+			var texture = new Texture2D( 1, 1, TextureFormat.ARGB32, false );
+			var rects = texture.PackTextures2( selection, padding, 4096 );
+
+			var texturePath = Path.ChangeExtension( prefabPath, "png" );
+			byte[] bytes = texture.EncodeToPNG();
+			System.IO.File.WriteAllBytes( texturePath, bytes );
+			bytes = null;
+			DestroyImmediate( texture );
+
+			setAtlasTextureSettings( texturePath, FilterMode.Bilinear );
+
+			texture = AssetDatabase.LoadAssetAtPath( texturePath, typeof( Texture2D ) ) as Texture2D;
+			if( texture == null )
+				Debug.LogError( "Failed to find texture at " + texturePath );
+
+			var sprites = new List<dfAtlas.ItemInfo>();
+			for( int i = 0; i < rects.Length; i++ )
+			{
+
+				var pixelCoords = rects[ i ];
+				var size = new Vector2( selection[ i ].width, selection[ i ].height );
+
+				var spritePath = AssetDatabase.GetAssetPath( selection[ i ] );
+				var guid = AssetDatabase.AssetPathToGUID( spritePath );
+
+				var item = new dfAtlas.ItemInfo()
+				{
+					name = selection[ i ].name,
+					region = pixelCoords,
+					rotated = false,
+					textureGUID = guid,
+					sizeInPixels = size
+				};
+
+				sprites.Add( item );
+
+			}
+
+			sprites.Sort();
+
+			var shader = Shader.Find( "Daikon Forge/Default UI Shader" );
+			var atlasMaterial = new Material( shader );
+			atlasMaterial.mainTexture = texture;
+			AssetDatabase.CreateAsset( atlasMaterial, Path.ChangeExtension( texturePath, "mat" ) );
+
+			var go = new GameObject() { name = Path.GetFileNameWithoutExtension( prefabPath ) };
+			var atlas = go.AddComponent<dfAtlas>();
+			atlas.Material = atlasMaterial;
+			atlas.AddItems( sprites );
+
+			var prefab = PrefabUtility.CreateEmptyPrefab( prefabPath );
+			prefab.name = atlas.name;
+			PrefabUtility.ReplacePrefab( go, prefab );
+
+			DestroyImmediate( go );
+			AssetDatabase.Refresh();
+
+			#region Delay execution of object selection to work around a Unity issue
+
+			// Declared with null value to eliminate "uninitialized variable" 
+			// compiler error in lambda below.
+			EditorApplication.CallbackFunction callback = null;
+
+			callback = () =>
+			{
+				EditorUtility.FocusProjectWindow();
+				go = AssetDatabase.LoadMainAssetAtPath( prefabPath ) as GameObject;
+				Selection.objects = new Object[] { go };
+				EditorGUIUtility.PingObject( go );
+				Debug.Log( "Texture Atlas prefab created at " + prefabPath, prefab );
+				EditorApplication.delayCall -= callback;
 			};
 
-			sprites.Add( item );
+			EditorApplication.delayCall += callback;
+
+			#endregion
 
 		}
-
-		var shader = Shader.Find( "Daikon Forge/Default UI Shader" );
-		var atlasMaterial = new Material( shader );
-		atlasMaterial.mainTexture = texture;
-		AssetDatabase.CreateAsset( atlasMaterial, Path.ChangeExtension( texturePath, "mat" ) );
-
-		var go = new GameObject() { name = Path.GetFileNameWithoutExtension( prefabPath ) };
-		var atlas = go.AddComponent<dfAtlas>();
-		atlas.material = atlasMaterial;
-		atlas.AddItems( sprites );
-
-		var prefab = PrefabUtility.CreateEmptyPrefab( prefabPath );
-		prefab.name = atlas.name;
-		PrefabUtility.ReplacePrefab( go, prefab );
-
-		DestroyImmediate( go );
-		AssetDatabase.Refresh();
-
-		#region Delay execution of object selection to work around a Unity issue
-
-		// Declared with null value to eliminate "uninitialized variable" 
-		// compiler error in lambda below.
-		EditorApplication.CallbackFunction callback = null;
-
-		callback = () =>
+		catch( Exception err )
 		{
-			EditorUtility.FocusProjectWindow();
-			go = AssetDatabase.LoadMainAssetAtPath( prefabPath ) as GameObject;
-			Selection.objects = new Object[] { go };
-			EditorGUIUtility.PingObject( go );
-			Debug.Log( "Texture Atlas prefab created at " + prefabPath, prefab );
-			EditorApplication.delayCall -= callback;
-		};
-
-		EditorApplication.delayCall += callback;
-
-		#endregion
+			Debug.LogError( err.ToString() );
+			EditorUtility.DisplayDialog( "Error Creating Texture Atlas", err.Message, "OK" );
+		}
+		finally
+		{
+			EditorUtility.ClearProgressBar();
+		}
 
 	}
 
-	private void rebuildAtlas( dfAtlas atlas )
+	internal static bool rebuildAtlas( dfAtlas atlas )
 	{
 
-		var textures = atlas.items.Select( i => i.texture ).ToList();
-
-		var oldAtlasTexture = atlas.material.mainTexture;
-		var texturePath = AssetDatabase.GetAssetPath( oldAtlasTexture );
-
-		var newAtlasTexture = new Texture2D( 0, 0, TextureFormat.RGBA32, false );
-		var newRects = newAtlasTexture.PackTextures( textures.ToArray(), 2 );
-
-		byte[] bytes = newAtlasTexture.EncodeToPNG();
-		System.IO.File.WriteAllBytes( texturePath, bytes );
-		bytes = null;
-		DestroyImmediate( newAtlasTexture );
-
-		setTextureImportSettings( texturePath, oldAtlasTexture.filterMode );
-
-		// Fix up the new sprite locations
-		for( int i = 0; i < atlas.Count; i++ )
+		try
 		{
-			atlas.items[ i ].region = newRects[ i ];
+
+			EditorUtility.DisplayProgressBar( "Rebuilding Texture Atlas", "Processing changes to the texture atlas...", 0 );
+
+			var sprites = atlas.Items
+				.Where( i => !i.deleted )
+				.Select( i => new { source = i, texture = getTexture( i.textureGUID ) } )
+				.OrderByDescending( i => i.texture.width * i.texture.height )
+				.ToList();
+
+			var textures = sprites.Select( i => i.texture ).ToList();
+
+			var oldAtlasTexture = atlas.Material.mainTexture;
+			var texturePath = AssetDatabase.GetAssetPath( oldAtlasTexture );
+
+			var padding = EditorPrefs.GetInt( "DaikonForge.AtlasDefaultPadding", 2 );
+
+			var newAtlasTexture = new Texture2D( 0, 0, TextureFormat.RGBA32, false );
+			var newRects = newAtlasTexture.PackTextures2( textures.ToArray(), padding, 4096 );
+
+			byte[] bytes = newAtlasTexture.EncodeToPNG();
+			System.IO.File.WriteAllBytes( texturePath, bytes );
+			bytes = null;
+			DestroyImmediate( newAtlasTexture );
+
+			setAtlasTextureSettings( texturePath, oldAtlasTexture.filterMode );
+
+			// Fix up the new sprite locations
+			for( int i = 0; i < sprites.Count; i++ )
+			{
+				sprites[ i ].source.region = newRects[ i ];
+				sprites[ i ].source.sizeInPixels = new Vector2( textures[ i ].width, textures[ i ].height );
+				sprites[ i ].source.texture = null;
+			}
+
+			// Remove any deleted sprites
+			atlas.Items.RemoveAll( i => i.deleted );
+
+			// Re-sort the Items collection
+			atlas.Items.Sort();
+			atlas.RebuildIndexes();
+
+			EditorUtility.SetDirty( atlas );
+			EditorUtility.SetDirty( atlas.Material );
+
+			dfGUIManager.RefreshAll( true );
+
+			return true;
+
+		}
+		catch( Exception err )
+		{
+
+			Debug.LogError( err.ToString(), atlas );
+			EditorUtility.DisplayDialog( "Error Rebuilding Texture Atlas", err.Message, "OK" );
+
+			return false;
+
+		}
+		finally
+		{
+			EditorUtility.ClearProgressBar();
 		}
 
-		// Re-sort the Items collection
-		atlas.items.Sort();
-		atlas.RebuildIndexes();
+	}
 
-		EditorUtility.SetDirty( atlas );
-		EditorUtility.SetDirty( atlas.material );
-
-		dfGUIManager.RefreshAll();
-
+	private static Texture2D getTexture( string guid )
+	{
+		var path = AssetDatabase.GUIDToAssetPath( guid );
+		return AssetDatabase.LoadAssetAtPath( path, typeof( Texture2D ) ) as Texture2D;
 	}
 
 	public void RemoveSprite( dfAtlas atlas, string spriteName )
 	{
-
-		atlas.Remove( spriteName );
-
-		var textures = atlas.items.Select( i => i.texture ).ToList();
-
-		var oldAtlasTexture = atlas.material.mainTexture;
-		var texturePath = AssetDatabase.GetAssetPath( oldAtlasTexture );
-
-		var newAtlasTexture = new Texture2D( 0, 0, TextureFormat.RGBA32, false );
-		var newRects = newAtlasTexture.PackTextures( textures.ToArray(), 2 );
-
-		byte[] bytes = newAtlasTexture.EncodeToPNG();
-		System.IO.File.WriteAllBytes( texturePath, bytes );
-		bytes = null;
-		DestroyImmediate( newAtlasTexture );
-
-		setTextureImportSettings( texturePath, oldAtlasTexture.filterMode );
-
-		// Fix up the new sprite locations
-		for( int i = 0; i < atlas.Count; i++ )
-		{
-			atlas.items[ i ].region = newRects[ i ];
-		}
-
-		// Re-sort the Items collection
-		atlas.items.Sort();
-		atlas.RebuildIndexes();
-
-		EditorUtility.SetDirty( atlas );
-		EditorUtility.SetDirty( atlas.material );
-
-		dfGUIManager.RefreshAll();
-
+		selectedTextures.Clear();
+		atlas[ spriteName ].deleted = true;
+		rebuildAtlas( atlas );
 	}
 
-	public void AddTexture( dfAtlas atlas, params Texture2D[] newTextures )
+	public bool AddTexture( dfAtlas atlas, params Texture2D[] newTextures )
 	{
 
-		for( int i = 0; i < newTextures.Length; i++ )
+		try
 		{
 
-			// Grab reference to existing item, if it exists, to preserve border information
-			var existingItem = atlas[ newTextures[ i ].name ];
+			selectedTextures.Clear();
 
-			// Remove the existing item if it already exists
-			atlas.Remove( newTextures[ i ].name );
+			var addedItems = new List<dfAtlas.ItemInfo>();
 
-			// Add the new texture to the Items collection
-			atlas.AddItem( new dfAtlas.ItemInfo()
+			for( int i = 0; i < newTextures.Length; i++ )
 			{
-				texture = newTextures[ i ],
-				name = newTextures[ i ].name,
-				border = ( existingItem != null ) ? existingItem.border : new RectOffset()
-			} );
+
+				// Grab reference to existing item, if it exists, to preserve border information
+				var existingItem = atlas[ newTextures[ i ].name ];
+
+				// Remove the existing item if it already exists
+				atlas.Remove( newTextures[ i ].name );
+
+				// Keep the texture size available
+				var size = new Vector2( newTextures[ i ].width, newTextures[ i ].height );
+
+				// Determine the guid for the texture
+				var spritePath = AssetDatabase.GetAssetPath( newTextures[ i ] );
+				var guid = AssetDatabase.AssetPathToGUID( spritePath );
+
+				// Add the new texture to the Items collection
+				var newItem = new dfAtlas.ItemInfo()
+				{
+					textureGUID = guid,
+					name = newTextures[ i ].name,
+					border = ( existingItem != null ) ? existingItem.border : new RectOffset(),
+					sizeInPixels = size
+				};
+				addedItems.Add( newItem );
+				atlas.AddItem( newItem );
+
+			}
+
+			if( !rebuildAtlas( atlas ) )
+			{
+				atlas.Items.RemoveAll( i => addedItems.Contains( i ) );
+				return false;
+			}
+
+			return true;
 
 		}
-
-		var textures = atlas.items.Select( i => i.texture ).ToList();
-
-		var oldAtlasTexture = atlas.material.mainTexture;
-		var texturePath = AssetDatabase.GetAssetPath( oldAtlasTexture );
-
-		var newAtlasTexture = new Texture2D( 0, 0, TextureFormat.RGBA32, false );
-		var newRects = newAtlasTexture.PackTextures( textures.ToArray(), 2 );
-
-		byte[] bytes = newAtlasTexture.EncodeToPNG();
-		System.IO.File.WriteAllBytes( texturePath, bytes );
-		bytes = null;
-		DestroyImmediate( newAtlasTexture );
-
-		setTextureImportSettings( texturePath, oldAtlasTexture.filterMode );
-
-		// Fix up the new sprite locations
-		for( int i = 0; i < atlas.Count; i++ )
+		catch( Exception err )
 		{
-			atlas.items[ i ].region = newRects[ i ];
+			Debug.LogError( err.ToString(), atlas );
+			EditorUtility.DisplayDialog( "Error Adding Sprite", err.Message, "OK" );
 		}
 
-		// Re-sort the Items collection
-		atlas.items.Sort();
-		atlas.RebuildIndexes();
-
-		EditorUtility.SetDirty( atlas );
-		EditorUtility.SetDirty( atlas.material );
-
-		dfGUIManager.RefreshAll();
+		return false;
 
 	}
 
@@ -266,21 +307,24 @@ public class dfTextureAtlasInspector : Editor
 
 	}
 
-	private static void setTextureImportSettings( string path, FilterMode filterMode )
+	private static void setAtlasTextureSettings( string path, FilterMode filterMode )
 	{
 
 		AssetDatabase.Refresh();
+
 		var importer = AssetImporter.GetAtPath( path ) as TextureImporter;
 		if( importer == null )
-			Debug.LogError( "Failed to find importer" );
+		{
+			Debug.LogError( "Failed to obtain import settings for texture: " + path );
+		}
 
 		var settings = new TextureImporterSettings();
 
 		importer.ReadTextureSettings( settings );
 		settings.mipmapEnabled = false;
-		settings.readable = true;
+		settings.readable = false;
 		settings.maxTextureSize = 4096;
-		settings.textureFormat = TextureImporterFormat.ARGB32;
+		settings.textureFormat = TextureImporterFormat.AutomaticTruecolor;
 		settings.filterMode = filterMode;
 		settings.wrapMode = TextureWrapMode.Clamp;
 		settings.npotScale = TextureImporterNPOTScale.None;
@@ -298,16 +342,43 @@ public class dfTextureAtlasInspector : Editor
 
 		var atlas = target as dfAtlas;
 
+		if( atlas.Items.Any( i => i.texture != null ) )
+		{
+
+			var upgradeMessage = "This Texture Atlas is an older unsupported format and must be upgraded before use.";
+			EditorGUILayout.HelpBox( upgradeMessage, MessageType.Error );
+
+			if( GUILayout.Button( "Upgrade Atlases" ) )
+			{
+				dfUpgradeHelper.UpgradeAtlases();
+			}
+
+			return;
+
+		}
+
 		var atlasInfo = string.Format(
 			"Texture Atlas: {0}\nSprites: {1}\nTexture: {2}\nFormat: {3}",
 			atlas.name,
-			atlas.items.Count,
+			atlas.Items.Count,
 			atlas.Texture != null ? string.Format( "{0}x{1}", atlas.Texture.width, atlas.Texture.height ) : "[none]",
 			atlas.Texture.format
 		);
 
 		GUILayout.Label( atlasInfo );
 
+		var paddingConfig = EditorPrefs.GetInt( "DaikonForge.AtlasDefaultPadding", 2 );
+		var padding = Mathf.Max( 0, EditorGUILayout.IntField( "Padding", paddingConfig ) );
+		{
+			if( padding != paddingConfig )
+			{
+				EditorPrefs.SetInt( "DaikonForge.AtlasDefaultPadding", padding );
+			}
+		}
+
+		EditAtlasReplacement( atlas );
+
+		ShowAtlasActions( atlas );
 		ShowAddTextureOption( atlas );
 		ShowModifiedTextures( atlas );
 
@@ -319,27 +390,8 @@ public class dfTextureAtlasInspector : Editor
 		var sprite = atlas[ SelectedSprite ];
 		if( sprite == null )
 		{
-
-			EditorGUILayout.BeginHorizontal();
-			{
-
-				if( GUILayout.Button( "Rebuild" ) )
-				{
-					rebuildAtlas( atlas );
-				}
-
-				if( GUILayout.Button( "Refresh Views" ) )
-				{
-					dfGUIManager.RefreshAll( true );
-				}
-
-			}
-			EditorGUILayout.EndHorizontal();
-
 			showSprites( atlas );
-
 			return;
-
 		}
 
 		var spriteName = EditorGUILayout.TextField( "Name", sprite.name );
@@ -372,11 +424,14 @@ public class dfTextureAtlasInspector : Editor
 		}
 		EditorGUILayout.EndHorizontal();
 
-		if( sprite.texture == null )
-			return;
+		var atlasTexture = atlas.Material.mainTexture;
+		var atlasWidth = atlasTexture.width;
+		var atlasHeight = atlasTexture.height;
+		var width = sprite.sizeInPixels.x;
+		var height = sprite.sizeInPixels.y;
 
-		var location = new Vector2( sprite.region.x * sprite.texture.width, sprite.region.y * sprite.texture.height );
-		var size = new Vector2( sprite.texture.width, sprite.texture.height );
+		var location = new Vector2( sprite.region.x * atlasWidth, atlasHeight - sprite.region.y * atlasHeight );
+		var size = new Vector2( width, height );
 
 		dfEditorUtil.DrawHorzLine();
 		EditInt2( "Location", "Left", "Top", location, 90, false );
@@ -399,6 +454,98 @@ public class dfTextureAtlasInspector : Editor
 
 	}
 
+	private void EditAtlasReplacement( dfAtlas atlas )
+	{
+
+		var value = atlas.Replacement;
+
+		dfPrefabSelectionDialog.SelectionCallback selectionCallback = delegate( GameObject item )
+		{
+			var newAtlas = ( item == null ) ? null : item.GetComponent<dfAtlas>();
+			dfEditorUtil.MarkUndo( atlas, "Assign replacement Atlas" );
+			atlas.Replacement = newAtlas;
+		};
+
+		EditorGUILayout.BeginHorizontal();
+		{
+
+			EditorGUILayout.LabelField( "Replacement", "", GUILayout.Width( dfEditorUtil.LabelWidth - 6 ) );
+
+			GUILayout.Space( 2 );
+
+			var displayText = value == null ? "[none]" : value.name;
+			GUILayout.Label( displayText, "TextField" );
+
+			var evt = Event.current;
+			if( evt != null )
+			{
+				Rect textRect = GUILayoutUtility.GetLastRect();
+				if( evt.type == EventType.mouseDown && evt.clickCount == 2 )
+				{
+					if( textRect.Contains( evt.mousePosition ) )
+					{
+						if( GUI.enabled && value != null )
+						{
+							Selection.activeObject = value;
+							EditorGUIUtility.PingObject( value );
+						}
+					}
+				}
+				else if( evt.type == EventType.DragUpdated || evt.type == EventType.DragPerform )
+				{
+					if( textRect.Contains( evt.mousePosition ) )
+					{
+						var draggedObject = DragAndDrop.objectReferences.First() as GameObject;
+						var draggedFont = draggedObject != null ? draggedObject.GetComponent<dfAtlas>() : null;
+						DragAndDrop.visualMode = ( draggedFont != null ) ? DragAndDropVisualMode.Copy : DragAndDropVisualMode.None;
+						if( evt.type == EventType.DragPerform )
+						{
+							selectionCallback( draggedObject );
+						}
+						evt.Use();
+					}
+				}
+			}
+
+			if( GUI.enabled && GUILayout.Button( new GUIContent( " ", "Edit Atlas" ), "IN ObjectField", GUILayout.Width( 14 ) ) )
+			{
+				dfEditorUtil.DelayedInvoke( (Action)( () =>
+				{
+					var dialog = dfPrefabSelectionDialog.Show( "Select Texture Atlas", typeof( dfAtlas ), selectionCallback, dfTextureAtlasInspector.DrawAtlasPreview, null );
+					dialog.previewSize = 200;
+				} ) );
+			}
+
+		}
+		EditorGUILayout.EndHorizontal();
+
+		GUILayout.Space( 2 );
+
+	}
+
+	private static void ShowAtlasActions( dfAtlas atlas )
+	{
+
+		dfEditorUtil.DrawSeparator();
+
+		EditorGUILayout.BeginHorizontal();
+		{
+
+			if( GUILayout.Button( "Rebuild" ) )
+			{
+				rebuildAtlas( atlas );
+			}
+
+			if( GUILayout.Button( "Refresh Views" ) )
+			{
+				dfGUIManager.RefreshAll( true );
+			}
+
+		}
+		EditorGUILayout.EndHorizontal();
+
+	}
+
 	private void showSprites( dfAtlas atlas )
 	{
 
@@ -409,18 +556,40 @@ public class dfTextureAtlasInspector : Editor
 
 		GUILayout.Label( "Sprites", "HeaderLabel" );
 
-		for( int i = 0; i < atlas.items.Count; i++ )
+		if( showDeleteSelectedButton( atlas ) )
+		{
+			return;
+		}
+
+		for( int i = 0; i < atlas.Items.Count; i++ )
 		{
 
-			var sprite = atlas.items[ i ];
+			var sprite = atlas.Items[ i ];
 
 			dfEditorUtil.DrawSeparator();
+
+			EditorGUILayout.BeginHorizontal();
+			{
+
+				bool isSelected = selectedTextures.ContainsKey( sprite.name );
+				if( EditorGUILayout.Toggle( isSelected, GUILayout.Width( 25 ) ) )
+				{
+					selectedTextures[ sprite.name ] = true;
+				}
+				else
+				{
+					selectedTextures.Remove( sprite.name );
+				}
+
+				var label = string.Format( "{0} ({1} x {2})", sprite.name, (int)sprite.sizeInPixels.x, (int)sprite.sizeInPixels.y );
+				GUILayout.Label( label, GUILayout.ExpandWidth( true ) );
+
+			}
+			EditorGUILayout.EndHorizontal();
 
 			var removeSprite = false;
 			EditorGUILayout.BeginHorizontal();
 			{
-
-				GUILayout.Label( sprite.name );
 
 				if( GUILayout.Button( "Edit", GUILayout.Width( 75 ) ) )
 				{
@@ -441,33 +610,54 @@ public class dfTextureAtlasInspector : Editor
 				continue;
 			}
 
-			if( sprite.texture == null )
-			{
-				EditorGUILayout.HelpBox( "This sprite's texture has been deleted", MessageType.Error );
-			}
-			else
-			{
+			var size = 75; // Mathf.Min( 75, Mathf.Max( sprite.sizeInPixels.x, sprite.sizeInPixels.y ) );
+			var rect = GUILayoutUtility.GetRect( size, size );
 
-				var size = 75; // Mathf.Min( 75, Mathf.Max( sprite.sizeInPixels.x, sprite.sizeInPixels.y ) );
-				var rect = GUILayoutUtility.GetRect( size, size );
-				drawSprite( rect, sprite );
-
-			}
+			drawSprite( rect, atlas, sprite );
 
 		}
 
 		EditorGUI.indentLevel -= 1;
 
+		showDeleteSelectedButton( atlas );
+
 	}
 
-	private void drawSprite( Rect rect, dfAtlas.ItemInfo sprite )
+	private bool showDeleteSelectedButton( dfAtlas atlas )
 	{
 
-		var texture = sprite.texture;
-		if( texture == null )
-			return;
+		if( selectedTextures.Count > 0 )
+		{
 
-		var size = new Vector2( texture.width, texture.height );
+			dfEditorUtil.DrawHorzLine();
+
+			var buttonLabel = string.Format( "Delete {0} sprites", selectedTextures.Count );
+			if( GUILayout.Button( buttonLabel ) )
+			{
+
+				foreach( var key in selectedTextures.Keys )
+				{
+					atlas[ key ].deleted = true;
+				}
+
+				rebuildAtlas( atlas );
+
+				selectedTextures.Clear();
+
+				return true;
+
+			}
+
+		}
+
+		return false;
+
+	}
+
+	private void drawSprite( Rect rect, dfAtlas atlas, dfAtlas.ItemInfo sprite )
+	{
+
+		var size = sprite.sizeInPixels;
 		var destRect = rect;
 
 		if( destRect.width < size.x || destRect.height < size.y )
@@ -489,7 +679,7 @@ public class dfTextureAtlasInspector : Editor
 		if( destRect.width < rect.width ) destRect.x = rect.x + ( rect.width - destRect.width ) * 0.5f;
 		if( destRect.height < rect.height ) destRect.y = rect.y + ( rect.height - destRect.height ) * 0.5f;
 
-		GUI.DrawTexture( destRect, texture );
+		GUI.DrawTextureWithTexCoords( destRect, atlas.Material.mainTexture, sprite.region );
 
 	}
 
@@ -512,12 +702,12 @@ public class dfTextureAtlasInspector : Editor
 
 		var modifiedSprites = new List<dfAtlas.ItemInfo>();
 
-		for( int i = 0; i < atlas.items.Count; i++ )
+		for( int i = 0; i < atlas.Items.Count; i++ )
 		{
 
-			var sprite = atlas.items[ i ];
+			var sprite = atlas.Items[ i ];
 
-			var spriteTexturePath = AssetDatabase.GetAssetPath( sprite.texture );
+			var spriteTexturePath = AssetDatabase.GUIDToAssetPath( sprite.textureGUID );
 			if( string.IsNullOrEmpty( spriteTexturePath ) || !File.Exists( spriteTexturePath ) )
 				continue;
 
@@ -542,49 +732,10 @@ public class dfTextureAtlasInspector : Editor
 		var performUpdate = GUILayout.Button( "Refresh Modified Sprites" );
 		dfEditorUtil.DrawSeparator();
 
-		if( !performUpdate )
+		if( performUpdate )
 		{
-			return;
+			rebuildAtlas( atlas );
 		}
-
-		for( int i = 0; i < modifiedSprites.Count; i++ )
-		{
-			var sprite = modifiedSprites[ i ];
-			var spriteTexturePath = AssetDatabase.GetAssetPath( sprite.texture );
-			sprite.texture = AssetDatabase.LoadAssetAtPath( spriteTexturePath, typeof( Texture2D ) ) as Texture2D;
-		}
-
-		var textures = atlas.items.Select( i => i.texture ).ToArray();
-
-		var oldAtlasTexture = atlas.material.mainTexture;
-		var atlasTexturePath = AssetDatabase.GetAssetPath( oldAtlasTexture );
-
-		var newAtlasTexture = new Texture2D( 0, 0, TextureFormat.RGBA32, false );
-		var newRects = newAtlasTexture.PackTextures( textures, 2 );
-
-		byte[] bytes = newAtlasTexture.EncodeToPNG();
-		System.IO.File.WriteAllBytes( atlasTexturePath, bytes );
-		bytes = null;
-		DestroyImmediate( newAtlasTexture );
-
-		setTextureImportSettings( atlasTexturePath, oldAtlasTexture.filterMode );
-
-		// Fix up the new sprite locations
-		for( int i = 0; i < atlas.Count; i++ )
-		{
-			atlas.items[ i ].region = newRects[ i ];
-		}
-
-		// Re-sort the Items collection
-		atlas.items.Sort();
-		atlas.RebuildIndexes();
-
-		EditorUtility.SetDirty( atlas );
-		EditorUtility.SetDirty( atlas.material );
-
-		dfGUIManager.RefreshAll();
-
-		EditorUtility.DisplayDialog( "Refresh Sprites", message, "OK" );
 
 	}
 
@@ -630,7 +781,10 @@ public class dfTextureAtlasInspector : Editor
 		var notReadable = textures.Where( x => !isReadable( x ) ).OrderBy( x => x.name ).Select( x => x.name ).ToArray();
 		var readable = textures.Where( x => isReadable( x ) ).OrderBy( x => x.name ).ToArray();
 
-		AddTexture( atlas, readable );
+		if( !AddTexture( atlas, readable ) )
+		{
+			return;
+		}
 
 		var message = string.Format( "{0} texture(s) added.", readable.Length );
 		if( notReadable.Length > 0 )
@@ -755,7 +909,10 @@ public class dfTextureAtlasInspector : Editor
 
 			if( GUILayout.Button( new GUIContent( " ", "Edit " + label ), "IN ObjectField", GUILayout.Width( 12 ) ) )
 			{
-				dfSpriteSelectionDialog.Show( "Select Sprite: " + label, atlas, value, callback );
+				dfEditorUtil.DelayedInvoke( (Action)( () =>
+				{
+					dfSpriteSelectionDialog.Show( "Select Sprite: " + label, atlas, value, callback );
+				} ) );
 			}
 
 		}
@@ -856,11 +1013,7 @@ public class dfTextureAtlasInspector : Editor
 			return;
 
 		var spriteInfo = atlas[ SelectedSprite ];
-		var texture = spriteInfo.texture;
-		if( texture == null )
-			return;
-
-		var size = new Vector2( texture.width, texture.height );
+		var size = spriteInfo.sizeInPixels;
 
 		var destRect = rect;
 
@@ -883,7 +1036,7 @@ public class dfTextureAtlasInspector : Editor
 		if( destRect.width < rect.width ) destRect.x = rect.x + ( rect.width - destRect.width ) * 0.5f;
 		if( destRect.height < rect.height ) destRect.y = rect.y + ( rect.height - destRect.height ) * 0.5f;
 
-		GUI.DrawTexture( destRect, texture );
+		GUI.DrawTextureWithTexCoords( destRect, atlas.Material.mainTexture, spriteInfo.region );
 
 		var border = spriteInfo.border;
 		if( border.horizontal > 0 || border.vertical > 0 )

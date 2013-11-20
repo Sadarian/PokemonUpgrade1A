@@ -245,7 +245,7 @@ public class dfInteractiveBase : dfControl
 
 	}
 
-	private Color32 getActiveColor()
+	protected virtual Color32 getActiveColor()
 	{
 
 		if( IsEnabled ) return this.color;
@@ -267,7 +267,17 @@ public class dfInteractiveBase : dfControl
 			return null;
 
 		if( !IsEnabled )
-			return atlas[ DisabledSprite ];
+		{
+
+			var disabled = atlas[ DisabledSprite ];
+			if( disabled != null )
+			{
+				return disabled;
+			}
+
+			return atlas[ BackgroundSprite ];
+
+		}
 
 		if( HasFocus )
 		{

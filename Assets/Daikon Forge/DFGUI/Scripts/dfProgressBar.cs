@@ -360,7 +360,7 @@ public class dfProgressBar : dfControl
 		if( Atlas == null )
 			return;
 
-		renderData.Material = Atlas.material;
+		renderData.Material = Atlas.Material;
 
 		renderBackground();
 		renderProgressFill();

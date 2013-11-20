@@ -67,6 +67,9 @@ public class dfScrollbar : dfControl
 	[SerializeField]
 	protected RectOffset thumbPadding = new RectOffset();
 
+	[SerializeField]
+	protected bool autoHide = false;
+
 	#endregion 
 
 	#region Public properties 
@@ -111,6 +114,7 @@ public class dfScrollbar : dfControl
 				this.minValue = value;
 				Value = Value; // Force update and validation
 				Invalidate();
+				doAutoHide();
 			}
 		}
 	}
@@ -128,6 +132,7 @@ public class dfScrollbar : dfControl
 				this.maxValue = value;
 				Value = Value; // Force update and validation
 				Invalidate();
+				doAutoHide();
 			}
 		}
 	}
@@ -167,6 +172,7 @@ public class dfScrollbar : dfControl
 				this.scrollSize = value;
 				Value = Value; // Force update and validation
 				Invalidate();
+				doAutoHide();
 			}
 		}
 	}
@@ -226,7 +232,8 @@ public class dfScrollbar : dfControl
 	}
 
 	/// <summary>
-	/// Gets/Sets a reference to the dfControl used to display the Thumb button
+	/// Gets/Sets a reference to the dfControl used to display the Thumb button.
+	/// This property should refer to a child control.
 	/// </summary>
 	public dfControl Thumb
 	{
@@ -243,7 +250,8 @@ public class dfScrollbar : dfControl
 
 	/// <summary>
 	/// Gets/Sets a reference to the dfControl that will be used to 
-	/// properly position and size the Thumb icon
+	/// properly position and size the Thumb icon.
+	/// This property should refer to a child control.
 	/// </summary>
 	public dfControl Track
 	{
@@ -260,7 +268,8 @@ public class dfScrollbar : dfControl
 
 	/// <summary>
 	/// Gets/Sets a reference to the dfControl (if any) that can be clicked
-	/// to increment the Value
+	/// to increment the Value.
+	/// This property should refer to a child control.
 	/// </summary>
 	public dfControl IncButton
 	{
@@ -277,7 +286,8 @@ public class dfScrollbar : dfControl
 
 	/// <summary>
 	/// Gets/Sets a reference to the dfControl (if any) that can be clicked
-	/// to decrement the Value
+	/// to decrement the Value.
+	/// This property should refer to a child control.
 	/// </summary>
 	public dfControl DecButton
 	{
@@ -319,6 +329,23 @@ public class dfScrollbar : dfControl
 			{
 				this.thumbPadding = value;
 				updateThumb( this.rawValue );
+			}
+		}
+	}
+
+	/// <summary>
+	/// Gets or sets whether the scrollbar will automatically hide when not needed
+	/// </summary>
+	public bool AutoHide
+	{
+		get { return this.autoHide; }
+		set
+		{
+			if( value != this.autoHide )
+			{
+				this.autoHide = value;
+				Invalidate();
+				doAutoHide();
 			}
 		}
 	}
@@ -602,9 +629,32 @@ public class dfScrollbar : dfControl
 
 	}
 
+	protected internal override void OnSizeChanged()
+	{
+		base.OnSizeChanged();
+		updateThumb( this.rawValue );
+	}
+
 	#endregion
 
 	#region Private utility methods
+
+	private void doAutoHide()
+	{
+
+		if( !this.autoHide || !Application.isPlaying )
+			return;
+
+		if( Mathf.CeilToInt( ScrollSize ) >= Mathf.CeilToInt( maxValue - minValue ) )
+		{
+			this.Hide();
+		}
+		else 
+		{
+			this.Show();
+		}
+
+	}
 
 	private void incrementPressed( dfControl sender, dfMouseEventArgs args )
 	{

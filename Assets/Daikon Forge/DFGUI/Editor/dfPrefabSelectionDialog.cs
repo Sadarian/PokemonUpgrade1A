@@ -217,10 +217,17 @@ public class dfPrefabSelectionDialog : ScriptableWizard
 				if( !path.EndsWith( ".prefab", StringComparison.InvariantCultureIgnoreCase ) )
 					continue;
 
-				var gameObject = AssetDatabase.LoadMainAssetAtPath( path ) as GameObject;
-				if( IsPrefab( gameObject ) )
+				try
 				{
-					allPrefabsInProject.Add( gameObject );
+					var gameObject = AssetDatabase.LoadMainAssetAtPath( path ) as GameObject;
+					if( IsPrefab( gameObject ) )
+					{
+						allPrefabsInProject.Add( gameObject );
+					}
+				}
+				catch( Exception err )
+				{
+					Debug.LogError( "Error loading prefab at " + path + " - " + err.Message );
 				}
 
 			}

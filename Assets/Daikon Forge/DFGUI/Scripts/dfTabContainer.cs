@@ -215,7 +215,7 @@ public class dfTabContainer : dfControl
 			return;
 		}
 
-		renderData.Material = Atlas.material;
+		renderData.Material = Atlas.Material;
 
 		var color = ApplyOpacity( IsEnabled ? this.color : this.disabledColor );
 		var options = new dfSprite.RenderOptions()

@@ -72,7 +72,14 @@ public static class dfStringExtensions
 	/// </summary>
 	public static string MakeRelativePath( this string path )
 	{
+
+		if( string.IsNullOrEmpty( path ) )
+		{
+			return "";
+		}
+
 		return path.Substring( path.IndexOf( "Assets/", StringComparison.InvariantCultureIgnoreCase ) );
+
 	}
 
 	/// <summary>
@@ -100,7 +107,7 @@ public static class dfFloatExtensions
 {
 
 	/// <summary>
-	/// Restricts the value to a discrete multiple of the value in the <value>quantum</value> parameter
+	/// Restricts the value to a discrete multiple of the value in the <paramref name="stepSize"/> parameter
 	/// </summary>
 	public static float Quantize( this float value, float stepSize )
 	{
@@ -109,7 +116,7 @@ public static class dfFloatExtensions
 	}
 
 	/// <summary>
-	/// Restricts the value to a discrete multiple of the value in the <value>quantum</value> parameter
+	/// Restricts the value to a discrete multiple of the value in the <value>stepSize</value> parameter
 	/// </summary>
 	public static float RoundToNearest( this float value, float stepSize )
 	{

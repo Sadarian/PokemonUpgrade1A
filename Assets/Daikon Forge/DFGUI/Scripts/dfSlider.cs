@@ -226,7 +226,8 @@ public class dfSlider : dfControl
 	}
 
 	/// <summary>
-	/// Gets/Sets a reference to the dfControl used to display the Thumb button
+	/// Gets/Sets a reference to the dfControl used to display the Thumb button.
+	/// This property should refer to a child control.
 	/// </summary>
 	public dfControl Thumb
 	{
@@ -244,7 +245,8 @@ public class dfSlider : dfControl
 
 	/// <summary>
 	/// Gets/Sets a reference to the dfControl used to display the value as a 
-	/// progressively filled dfSprite
+	/// progressively filled dfSprite.
+	/// This property should refer to a child control.
 	/// </summary>
 	public dfControl Progress
 	{
@@ -384,10 +386,12 @@ public class dfSlider : dfControl
 	{
 
 		var orientationDir = ( orientation == dfControlOrientation.Horizontal ) ? -1 : 1;
-		this.Value += ( scrollSize * args.WheelDelta ) * orientationDir;
 
+		this.Value += ( scrollSize * args.WheelDelta ) * orientationDir;
 		args.Use();
+
 		Signal( "OnMouseWheel", args );
+		RaiseEvent( "MouseWheel", this, args );
 
 	}
 
@@ -401,9 +405,10 @@ public class dfSlider : dfControl
 		}
 
 		this.Value = getValueFromMouseEvent( args );
-
 		args.Use();
+
 		Signal( "OnMouseMove", args );
+		RaiseEvent( "MouseMove", this, args );
 
 	}
 
@@ -419,9 +424,10 @@ public class dfSlider : dfControl
 		this.Focus();
 
 		this.Value = getValueFromMouseEvent( args );
-
 		args.Use();
+
 		Signal( "OnMouseDown", args );
+		RaiseEvent( "MouseDown", this, args );
 
 	}
 
@@ -466,7 +472,7 @@ public class dfSlider : dfControl
 		if( Atlas == null )
 			return;
 
-		renderData.Material = Atlas.material;
+		renderData.Material = Atlas.Material;
 
 		renderBackground();
 

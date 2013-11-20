@@ -25,6 +25,11 @@ public class dfInputManager : MonoBehaviour
 	/// </summary>
 	private static KeyCode[] wasd = new KeyCode[] { KeyCode.W, KeyCode.A, KeyCode.S, KeyCode.D, KeyCode.LeftArrow, KeyCode.UpArrow, KeyCode.RightArrow, KeyCode.DownArrow };
 
+	/// <summary>
+	/// Retains a reference to the control currently under the mouse, if any
+	/// </summary>
+	private static dfControl controlUnderMouse = null;
+
 	#endregion
 
 	#region Serialized fields
@@ -53,18 +58,35 @@ public class dfInputManager : MonoBehaviour
 	[SerializeField]
 	protected bool retainFocus = false;
 
+	[SerializeField]
+	protected int touchClickRadius = 10;
+
 	#endregion
 
 	#region Private variables
 
 #if UNITY_IPHONE || UNITY_ANDROID || UNITY_BLACKBERRY || UNITY_WP8
 	private TouchInputManager touchHandler;
+	private dfList<Touch> touches = new dfList<Touch>();
 #endif
 
 	private dfControl buttonDownTarget;
 	private MouseInputManager mouseHandler;
 	private IInputAdapter adapter;
 	private float lastAxisCheck = 0f;
+
+	#endregion
+
+	#region Static properties 
+
+	/// <summary>
+	/// Returns a reference to the topmost control current under the 
+	/// mouse cursor, if any
+	/// </summary>
+	public static dfControl ControlUnderMouse
+	{
+		get { return controlUnderMouse; }
+	}
 
 	#endregion
 
@@ -87,6 +109,17 @@ public class dfInputManager : MonoBehaviour
 	{
 		get { return this.useTouch; }
 		set { this.useTouch = value; }
+	}
+
+	/// <summary>
+	/// Gets or sets the radius within which a touch and subsequent release
+	/// on the same control will be treated as a click. Releasing the 
+	/// touch outside of this radius will not result in a Click event.
+	/// </summary>
+	public int TouchClickRadius
+	{
+		get { return this.touchClickRadius; }
+		set { this.touchClickRadius = Mathf.Max( 0, value ); }
 	}
 
 	/// <summary>
@@ -166,7 +199,7 @@ public class dfInputManager : MonoBehaviour
 #if UNITY_IPHONE || UNITY_ANDROID || UNITY_BLACKBERRY || UNITY_WP8
 		// Multi-touch input will be handled by a TouchInputHandler instance
 		// to localize code complexity
-		touchHandler = new TouchInputManager();
+		touchHandler = new TouchInputManager( this );
 #endif
 
 		// If an input adapter has not already been assigned, look for 
@@ -288,6 +321,7 @@ public class dfInputManager : MonoBehaviour
 		if( e.isKey && e.keyCode != KeyCode.None )
 		{
 			processKeyEvent( e.type, e.keyCode, e.modifiers );
+			return;
 		}
 
 	}
@@ -299,95 +333,108 @@ public class dfInputManager : MonoBehaviour
 	private void processJoystick()
 	{
 
-		var target = dfGUIManager.ActiveControl;
-		if( target == null || !target.transform.IsChildOf( this.transform ) )
-			return;
-
-		#region Translate horz and vertical axes to keycodes
-
-		var horizontal = adapter.GetAxis( horizontalAxis );
-		var vertical = adapter.GetAxis( verticalAxis );
-
-		if( Mathf.Abs( horizontal ) < 0.5f && Mathf.Abs( vertical ) <= 0.5f )
-		{
-			lastAxisCheck = Time.deltaTime - axisPollingInterval;
-		}
-
-		if( Time.realtimeSinceStartup - lastAxisCheck > axisPollingInterval )
+		try
 		{
 
-			if( Mathf.Abs( horizontal ) >= 0.5f )
+			var target = dfGUIManager.ActiveControl;
+			if( target == null || !target.transform.IsChildOf( this.transform ) )
+				return;
+
+			#region Translate horz and vertical axes to keycodes
+
+			var horizontal = adapter.GetAxis( horizontalAxis );
+			var vertical = adapter.GetAxis( verticalAxis );
+
+			if( Mathf.Abs( horizontal ) < 0.5f && Mathf.Abs( vertical ) <= 0.5f )
 			{
-				lastAxisCheck = Time.realtimeSinceStartup;
-				var keyCode = ( horizontal > 0f ) ? KeyCode.RightArrow : KeyCode.LeftArrow;
-				target.OnKeyDown( new dfKeyEventArgs( target, keyCode, false, false, false ) );
+				lastAxisCheck = Time.deltaTime - axisPollingInterval;
 			}
 
-			if( Mathf.Abs( vertical ) >= 0.5f )
-			{
-				lastAxisCheck = Time.realtimeSinceStartup;
-				var keyCode = ( vertical > 0f ) ? KeyCode.UpArrow : KeyCode.DownArrow;
-				target.OnKeyDown( new dfKeyEventArgs( target, keyCode, false, false, false ) );
-			}
-
-		}
-
-		#endregion
-
-		#region Poll for joystick buttons and convert to KeyCode
-
-		if( joystickClickButton != KeyCode.None )
-		{
-
-			var buttonDown = adapter.GetKeyDown( joystickClickButton );
-			if( buttonDown )
+			if( Time.realtimeSinceStartup - lastAxisCheck > axisPollingInterval )
 			{
 
-				var center = target.GetCenter();
-				var camera = target.GetCamera();
-				var ray = camera.ScreenPointToRay( camera.WorldToScreenPoint( center ) );
-				var mouseDownArgs = new dfMouseEventArgs( target, dfMouseButtons.Left, 0, ray, center, 0 );
-
-				target.OnMouseDown( mouseDownArgs );
-
-				buttonDownTarget = target;
-
-			}
-
-			var buttonUp = adapter.GetKeyUp( joystickClickButton );
-			if( buttonUp )
-			{
-
-				if( buttonDownTarget == target )
+				if( Mathf.Abs( horizontal ) >= 0.5f )
 				{
-					target.DoClick();
+					lastAxisCheck = Time.realtimeSinceStartup;
+					var keyCode = ( horizontal > 0f ) ? KeyCode.RightArrow : KeyCode.LeftArrow;
+					target.OnKeyDown( new dfKeyEventArgs( target, keyCode, false, false, false ) );
 				}
 
-				var center = target.GetCenter();
-				var camera = target.GetCamera();
-				var ray = camera.ScreenPointToRay( camera.WorldToScreenPoint( center ) );
-				var mouseUpArgs = new dfMouseEventArgs( target, dfMouseButtons.Left, 0, ray, center, 0 );
-
-				target.OnMouseUp( mouseUpArgs );
-
-				buttonDownTarget = null;
+				if( Mathf.Abs( vertical ) >= 0.5f )
+				{
+					lastAxisCheck = Time.realtimeSinceStartup;
+					var keyCode = ( vertical > 0f ) ? KeyCode.UpArrow : KeyCode.DownArrow;
+					target.OnKeyDown( new dfKeyEventArgs( target, keyCode, false, false, false ) );
+				}
 
 			}
 
-		}
+			#endregion
 
-		for( var code = KeyCode.Joystick1Button0; code <= KeyCode.Joystick1Button19; code++ )
-		{
+			#region Poll for joystick buttons and convert to KeyCode
 
-			var buttonDown = adapter.GetKeyDown( code );
-			if( buttonDown )
+			if( joystickClickButton != KeyCode.None )
 			{
-				target.OnKeyDown( new dfKeyEventArgs( target, code, false, false, false ) );
+
+				var buttonDown = adapter.GetKeyDown( joystickClickButton );
+				if( buttonDown )
+				{
+
+					var center = target.GetCenter();
+					var camera = target.GetCamera();
+					var ray = camera.ScreenPointToRay( camera.WorldToScreenPoint( center ) );
+					var mouseDownArgs = new dfMouseEventArgs( target, dfMouseButtons.Left, 0, ray, center, 0 );
+
+					target.OnMouseDown( mouseDownArgs );
+
+					buttonDownTarget = target;
+
+				}
+
+				var buttonUp = adapter.GetKeyUp( joystickClickButton );
+				if( buttonUp )
+				{
+
+					if( buttonDownTarget == target )
+					{
+						target.DoClick();
+					}
+
+					var center = target.GetCenter();
+					var camera = target.GetCamera();
+					var ray = camera.ScreenPointToRay( camera.WorldToScreenPoint( center ) );
+					var mouseUpArgs = new dfMouseEventArgs( target, dfMouseButtons.Left, 0, ray, center, 0 );
+
+					target.OnMouseUp( mouseUpArgs );
+
+					buttonDownTarget = null;
+
+				}
+
 			}
 
-		}
+			for( var code = KeyCode.Joystick1Button0; code <= KeyCode.Joystick1Button19; code++ )
+			{
 
-		#endregion
+				var buttonDown = adapter.GetKeyDown( code );
+				if( buttonDown )
+				{
+					target.OnKeyDown( new dfKeyEventArgs( target, code, false, false, false ) );
+				}
+
+			}
+
+			#endregion
+
+		}
+		catch( UnityException err )
+		{
+			// Input axis is not set up or another problem with Input has
+			// been encountered. Temporarily disable joystick input and 
+			// notify user of issue.
+			Debug.LogError( err.ToString(), this );
+			this.useJoystick = false;
+		}
 
 	}
 
@@ -466,10 +513,21 @@ public class dfInputManager : MonoBehaviour
 	private bool processTouchInput()
 	{
 
-		var touches = Input.touches;
-
-		if( touches == null || touches.Length == 0 )
+		var touchCount = Input.touchCount;
+		if( touchCount == 0 )
 			return false;
+
+		if( touches == null )
+			touches = new dfList<Touch>();
+
+		// Gather touches in a dfList<> instead of an array to 
+		// avoid per-frame allocation of temporary variables 
+		
+		touches.Clear();
+		for( int i = 0; i < touchCount; i++ )
+		{
+			touches.Add( Input.GetTouch( i ) );
+		}
 
 		this.touchHandler.Process( this.transform, renderCamera, touches, retainFocus );
 
@@ -493,7 +551,7 @@ public class dfInputManager : MonoBehaviour
 
 		var hits = Physics.RaycastAll( ray, maxDistance, renderCamera.cullingMask );
 
-		var controlUnderMouse = clipCast( hits );
+		controlUnderMouse = clipCast( hits );
 		mouseHandler.ProcessInput( adapter, ray, controlUnderMouse, this.retainFocus );
 
 	}
@@ -589,14 +647,32 @@ public class dfInputManager : MonoBehaviour
 
 		private List<ControlTouchTracker> tracked = new List<ControlTouchTracker>();
 
+		private List<int> untracked = new List<int>();
+
+		private dfInputManager manager;
+
+		#endregion
+
+		#region Constructor 
+
+		private TouchInputManager()
+		{
+			// Disallow parameterless constructor
+		}
+
+		public TouchInputManager( dfInputManager manager )
+		{
+			this.manager = manager;
+		}
+
 		#endregion
 
 		#region Public methods
 
-		internal void Process( Transform transform, Camera renderCamera, Touch[] touches, bool retainFocus )
+		internal void Process( Transform transform, Camera renderCamera, dfList<Touch> touches, bool retainFocus )
 		{
 
-			for( int i = 0; i < touches.Length; i++ )
+			for( int i = 0; i < touches.Count; i++ )
 			{
 
 				// Dereference Touch information
@@ -606,9 +682,34 @@ public class dfInputManager : MonoBehaviour
 				var ray = renderCamera.ScreenPointToRay( touch.position );
 				var maxDistance = renderCamera.farClipPlane - renderCamera.nearClipPlane;
 				var hits = Physics.RaycastAll( ray, maxDistance, renderCamera.cullingMask );
-				var controlUnderTouch = clipCast( transform, hits );
+				
+				// Keep track of the last control under the "mouse"
+				controlUnderMouse = clipCast( transform, hits );
 
-				var info = new TouchRaycast( controlUnderTouch, touch, ray );
+				#region Don't track touches on empty space 
+
+				if( controlUnderMouse == null )
+				{
+					if( touch.phase == TouchPhase.Began )
+					{
+						untracked.Add( touch.fingerId );
+						continue;
+					}
+				}
+
+				if( untracked.Contains( touch.fingerId ) )
+				{
+					
+					if( touch.phase == TouchPhase.Ended )
+						untracked.Remove( touch.fingerId );
+					
+					continue;
+
+				}
+
+				#endregion
+
+				var info = new TouchRaycast( controlUnderMouse, touch, ray );
 
 				var captured = tracked.FirstOrDefault( x => x.IsTrackingFinger( info.FingerID ) );
 				if( captured != null )
@@ -627,13 +728,16 @@ public class dfInputManager : MonoBehaviour
 					}
 				}
 
-				if( !processed && controlUnderTouch != null )
+				if( !processed && controlUnderMouse != null )
 				{
 
-					if( !tracked.Any( x => x.control == controlUnderTouch ) )
+					if( !tracked.Any( x => x.control == controlUnderMouse ) )
 					{
 
-						var newTracker = new ControlTouchTracker( controlUnderTouch );
+						if( controlUnderMouse == null )
+							Debug.Log( "Tracking touch with no control: " + touch.fingerId );
+
+						var newTracker = new ControlTouchTracker( manager, controlUnderMouse );
 
 						tracked.Add( newTracker );
 						newTracker.Process( info );
@@ -750,6 +854,8 @@ public class dfInputManager : MonoBehaviour
 
 			#region Private variables 
 
+			private dfInputManager manager;
+
 			private dfDragDropState dragState = dfDragDropState.None;
 			private object dragData = null;
 
@@ -757,8 +863,9 @@ public class dfInputManager : MonoBehaviour
 
 			#region Constructor 
 
-			public ControlTouchTracker( dfControl control )
+			public ControlTouchTracker( dfInputManager manager, dfControl control )
 			{
+				this.manager = manager;
 				this.control = control;
 			}
 
@@ -778,6 +885,8 @@ public class dfInputManager : MonoBehaviour
 			/// <returns>Returns TRUE if the touch information was processed</returns>
 			public bool Process( TouchRaycast info )
 			{
+
+				#region Drag / Drop 
 
 				if( IsDragging )
 				{
@@ -852,6 +961,10 @@ public class dfInputManager : MonoBehaviour
 
 				}
 
+				#endregion 
+
+				#region New touch for this control 
+
 				if( !touches.ContainsKey( info.FingerID ) )
 				{
 
@@ -901,9 +1014,14 @@ public class dfInputManager : MonoBehaviour
 
 				}
 
-				// Previously tracked touch has now ended
+				#endregion
+
+				#region Previously tracked touch has now ended 
+
 				if( info.Phase == TouchPhase.Canceled || info.Phase == TouchPhase.Ended )
 				{
+
+					var touch = touches[ info.FingerID ];
 
 					// Remove the finger from the list of touches
 					touches.Remove( info.FingerID );
@@ -914,12 +1032,17 @@ public class dfInputManager : MonoBehaviour
 						if( capture.Contains( info.FingerID ) )
 						{
 
-							if( info.control == this.control )
+							if( canFireClickEvent( info, touch ) )
 							{
-								if( info.touch.tapCount > 1 )
-									control.OnDoubleClick( info );
-								else
-									control.OnClick( info );
+
+								if( info.control == this.control )
+								{
+									if( info.touch.tapCount > 1 )
+										control.OnDoubleClick( info );
+									else
+										control.OnClick( info );
+								}
+
 							}
 
 							control.OnMouseUp( info );
@@ -953,6 +1076,10 @@ public class dfInputManager : MonoBehaviour
 
 				}
 
+				#endregion 
+
+				#region Multi-touch events 
+
 				// If there is more than one touch active for this control, 
 				// then raise the OnMultiTouch event instead of converting
 				// the touch info to mouse events
@@ -968,6 +1095,8 @@ public class dfInputManager : MonoBehaviour
 
 				}
 
+				#endregion
+
 				// If the touch has not moved, send hover message
 				if( !IsDragging && info.Phase == TouchPhase.Stationary )
 				{
@@ -979,11 +1108,13 @@ public class dfInputManager : MonoBehaviour
 					return false;
 				}
 
-				// See if the control supports (and allows) drag-and-drop
+				#region See if the control supports (and allows) drag-and-drop
+
 				var canStartDrag = 
 					capture.Contains( info.FingerID ) &&
 					dragState == dfDragDropState.None && 
 					info.Phase == TouchPhase.Moved;
+
 				if( canStartDrag )
 				{
 
@@ -1008,6 +1139,8 @@ public class dfInputManager : MonoBehaviour
 
 				}
 
+				#endregion
+
 				// Check for mouse leave
 				if( info.control != this.control )
 				{
@@ -1029,6 +1162,18 @@ public class dfInputManager : MonoBehaviour
 				control.OnMouseMove( info );
 
 				return true;
+
+			}
+
+			private bool canFireClickEvent( TouchRaycast info, TouchRaycast touch )
+			{
+
+				if( manager.TouchClickRadius <= 0 )
+					return true;
+
+				var distanceFromStart = Vector2.Distance( info.position, touch.position );
+
+				return distanceFromStart < manager.TouchClickRadius;
 
 			}
 
@@ -1180,7 +1325,8 @@ public class dfInputManager : MonoBehaviour
 			if( !Mathf.Approximately( scroll, 0f ) )
 			{
 				// By default the mouse wheel is reported in increments of 0.1f, 
-				// which is just a useless number for UI. We'll assume that if the 
+				// which is just a useless number for UI, but this can be changed
+				// by the user in the Unity Input Manager. We'll assume that if the 
 				// number reported is less than 1 then it is probably safe to 
 				// assume that we can massage it for UI purposes.
 				scroll = Mathf.Sign( scroll ) * Mathf.Max( 1, Mathf.Abs( scroll ) );
@@ -1189,10 +1335,12 @@ public class dfInputManager : MonoBehaviour
 			mouseMoveDelta = position - lastPosition;
 			lastPosition = position;
 
+			#region Drag and drop 
+
 			if( dragState == dfDragDropState.Dragging )
 			{
 
-				if( !buttonsReleased.IsSet( dfMouseButtons.Left ) )
+				if( buttonsReleased == dfMouseButtons.None )
 				{
 
 					// Do nothing if the drag operation is over the source control 
@@ -1270,6 +1418,10 @@ public class dfInputManager : MonoBehaviour
 
 			}
 
+			#endregion
+
+			#region Mouse button released  
+
 			if( buttonsReleased != dfMouseButtons.None )
 			{
 
@@ -1312,6 +1464,10 @@ public class dfInputManager : MonoBehaviour
 
 			}
 
+			#endregion
+
+			#region Mouse button pressed 
+
 			if( buttonsPressed != dfMouseButtons.None )
 			{
 
@@ -1344,6 +1500,8 @@ public class dfInputManager : MonoBehaviour
 				return;
 
 			}
+
+			#endregion
 
 			#region Doesn't matter if buttons are down or not
 
@@ -1399,7 +1557,7 @@ public class dfInputManager : MonoBehaviour
 					if( mouseMoveDelta.magnitude >= DRAG_START_DELTA )
 					{
 
-						if( buttonsDown.IsSet( dfMouseButtons.Left ) && dragState != dfDragDropState.Denied )
+						if( ( buttonsDown & ( dfMouseButtons.Left | dfMouseButtons.Right ) ) != 0 && dragState != dfDragDropState.Denied )
 						{
 							var dragArgs = new dfDragEventArgs( activeControl ) { Position = position };
 							activeControl.OnDragStart( dragArgs );

@@ -65,6 +65,7 @@ Shader "Daikon Forge/Default UI Shader"
 			{
 				return tex2D( _MainTex, IN.tex.xy ) * IN.color;
 			}
+
 			ENDCG
 		}
 	}

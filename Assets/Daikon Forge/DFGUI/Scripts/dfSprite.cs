@@ -57,7 +57,7 @@ public class dfSprite : dfControl
 	#region Public properties
 
 	/// <summary>
-	/// The <see cref="dfAtlas">Texture Atlas</see> containing the images used by this label
+	/// The <see cref="dfAtlas">Texture Atlas</see> containing the images used by this control
 	/// </summary>
 	public dfAtlas Atlas
 	{
@@ -91,6 +91,7 @@ public class dfSprite : dfControl
 		get { return spriteName; }
 		set 
 		{
+			value = getLocalizedValue( value );
 			if( value != spriteName )
 			{
 				spriteName = value;
@@ -194,6 +195,12 @@ public class dfSprite : dfControl
 
 	#endregion
 
+	protected internal override void OnLocalize()
+	{
+		base.OnLocalize();
+		this.SpriteName = getLocalizedValue( this.spriteName );
+	}
+
 	protected internal virtual void OnSpriteNameChanged( string value )
 	{
 
@@ -228,7 +235,7 @@ public class dfSprite : dfControl
 
 		var isValidConfig =
 			Atlas != null &&
-			Atlas.material != null &&
+			Atlas.Material != null &&
 			IsVisible;
 
 		if( !isValidConfig )
@@ -241,7 +248,7 @@ public class dfSprite : dfControl
 			return;
 		}
 
-		renderData.Material = Atlas.material;
+		renderData.Material = Atlas.Material;
 
 		var color = ApplyOpacity( IsEnabled ? this.color : this.disabledColor );
 		var options = new RenderOptions()
@@ -276,9 +283,6 @@ public class dfSprite : dfControl
 
 		if( options.spriteInfo == null )
 			throw new ArgumentNullException( "The Sprite cannot be null" );
-
-		if( options.spriteInfo.texture == null )
-			throw new ArgumentNullException( "The sprite's texture is null or has been deleted" );
 
 #endif
 

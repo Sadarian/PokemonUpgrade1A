@@ -103,6 +103,8 @@ public class dfGUIManager : MonoBehaviour
 	private Vector2 cachedScreenSize;
 	private Vector3[] corners = new Vector3[ 4 ];
 
+	private dfList<Rect> occluders = new dfList<Rect>( 256 );
+
 	private Stack<ClipRegion> clipStack = new Stack<ClipRegion>();
 	private static dfRenderData masterBuffer = new dfRenderData( 4096 );
 	private dfList<dfRenderData> drawCallBuffers = new dfList<dfRenderData>();
@@ -315,6 +317,55 @@ public class dfGUIManager : MonoBehaviour
 	#endregion
 
 	#region Unity events
+
+	public void OnGUI()
+	{
+
+		if( occluders == null )
+			return;
+
+		// This code prevents "click through" by iterating 
+		// through the list of rendered control positions
+		// and determining if the mouse or touch currently
+		// overlaps. If it does overlap, then a GUI.Box()
+		// occluder is rendered and the current event is 
+		// consumed.
+
+		var mousePosition = Input.mousePosition;
+		mousePosition.y = Screen.height - mousePosition.y;
+
+		for( int i = 0; i < occluders.Count; i++ )
+		{
+			if( occluders[ i ].Contains( mousePosition ) )
+			{
+				GUI.Box( occluders[ i ], "", GUIStyle.none );
+				break;
+			}
+		}
+
+		if( Event.current.isMouse && Input.touchCount > 0 )
+		{
+			var touchCount = Input.touchCount;
+			for( int i = 0; i < touchCount; i++ )
+			{
+				var touch = Input.GetTouch( i );
+				if( touch.phase == TouchPhase.Began )
+				{
+
+					var touchPosition = touch.position;
+					touchPosition.y = Screen.height - touchPosition.y;
+
+					if( occluders.Any( x => x.Contains( touchPosition ) ) )
+					{
+						Event.current.Use();
+						break;
+					}
+
+				}
+			}
+		}
+
+	}
 
 #if UNITY_EDITOR
 
@@ -764,13 +815,11 @@ public class dfGUIManager : MonoBehaviour
 
 		}
 
-		if( isDirty && ( !Application.isPlaying || FramesRendered > 1 ) )
+		if( isDirty )
 		{
 			isDirty = false;
 			Render();
 		}
-
-		FramesRendered += 1;
 
 	}
 
@@ -866,12 +915,7 @@ public class dfGUIManager : MonoBehaviour
 
 		if( returnActualScreenSize )
 		{
-
-			var runtimeWidth = !roundToNearestEven ? camera.pixelWidth : nearestEvenValue( camera.pixelWidth );
-			var runtimeHeight = !roundToNearestEven ? camera.pixelHeight : nearestEvenValue( camera.pixelHeight );
-
-			return new Vector2( runtimeWidth, runtimeHeight ) / UIScale;
-
+			return new Vector2( camera.pixelWidth, camera.pixelHeight ) / uiScale;
 		}
 
 		return new Vector2( FixedWidth, FixedHeight );
@@ -1212,6 +1256,8 @@ public class dfGUIManager : MonoBehaviour
 	public void Render()
 	{
 
+		FramesRendered += 1;
+
 		if( BeforeRender != null )
 		{
 			BeforeRender( this );
@@ -1224,8 +1270,9 @@ public class dfGUIManager : MonoBehaviour
 			updateRenderSettings();
 
 			// We'll be keeping track of how many controls were actually rendered,
-			// as opposed to how many exist in the scene
+			// as opposed to just how many exist in the scene.
 			ControlsRendered = 0;
+			occluders.Clear();
 
 			// Other stats to be tracked for informational purposes
 			TotalDrawCalls = 0;
@@ -1350,7 +1397,8 @@ public class dfGUIManager : MonoBehaviour
 			#endregion
 
 			// The clip stack is reset after every frame as it's only needed during rendering
-			if( clipStack.Count > 1 ) Debug.LogError( "Clip stack not properly maintained" );
+			if( clipStack.Count != 1 ) Debug.LogError( "Clip stack not properly maintained" );
+			clipStack.Pop().Release();
 			clipStack.Clear();
 
 		}
@@ -1397,52 +1445,19 @@ public class dfGUIManager : MonoBehaviour
 		if( camera == null )
 			return;
 
-		var renderHeight = camera.pixelHeight.Quantize( 2 );
-
-		// If rendering to a RenderTexture, set the appropriate flags
-		if( Application.isPlaying && camera.targetTexture != null )
+		// If the screen size has changed since we last checked we need to let all
+		// controls know about the new screen size so that they can reposition or 
+		// resize themselves, etc.
+		var currentScreenSize = GetScreenSize( false );
+		if( ( currentScreenSize - cachedScreenSize ).sqrMagnitude > float.Epsilon )
 		{
-			camera.clearFlags = CameraClearFlags.SolidColor;
-			camera.backgroundColor = Color.clear;
-		}
-		else
-		{
-			camera.clearFlags = CameraClearFlags.Depth;
-		}
-
-		// Make sure everything is aligned on a pixel boundary
-		if( pixelPerfectMode && Application.isPlaying )
-		{
-			transform.position = transform.position.Quantize( 2f / renderHeight );
+			onResolutionChanged( cachedScreenSize, currentScreenSize );
+			cachedScreenSize = currentScreenSize;
+			Invalidate();
+			return;
 		}
 
-		// Make sure that the orthographic camera is set up to properly 
-		// render the user interface. This should be correct by default,
-		// but can get out of whack if the user switches between Perspective
-		// and Orthographic views. This also helps the user during initial
-		// setup of the user interface hierarchy.
-		var cameraPosition = transform.position;
-		if( camera.isOrthoGraphic )
-		{
-			camera.nearClipPlane = Mathf.Min( camera.nearClipPlane, -1f );
-			camera.farClipPlane = Mathf.Max( camera.farClipPlane, 1f );
-		}
-		else
-		{
-
-			// http://stackoverflow.com/q/2866350/154165
-			var fov = camera.fieldOfView * Mathf.Deg2Rad;
-			var corners = this.GetCorners();
-			var width = Vector3.Distance( corners[ 3 ], corners[ 0 ] );
-			var distance = width / ( 2f * Mathf.Tan( fov / 2f ) );
-			var back = transform.TransformDirection( Vector3.back ) * distance;
-
-			camera.farClipPlane = Mathf.Max( distance * 2f, camera.farClipPlane );
-			cameraPosition += back;
-
-		}
-
-		camera.transform.position = cameraPosition;
+		updateRenderCamera( camera );
 
 		#region Enforce uniform scaling
 
@@ -1503,7 +1518,77 @@ public class dfGUIManager : MonoBehaviour
 		// Resetting the hasChanged flag allows us to know when the transforms
 		// have changed. This is very important because it allows us to avoid 
 		// some expensive operations unless they are necessary.
-		transform.hasChanged = camera.transform.hasChanged = false;
+		transform.hasChanged = false;
+
+	}
+
+	private void updateRenderCamera( Camera camera )
+	{
+
+		// If rendering to a RenderTexture, set the appropriate flags
+		if( Application.isPlaying && camera.targetTexture != null )
+		{
+			camera.clearFlags = CameraClearFlags.SolidColor;
+			camera.backgroundColor = Color.clear;
+		}
+		else
+		{
+			camera.clearFlags = CameraClearFlags.Depth;
+		}
+
+		// Make sure that the orthographic camera is set up to properly 
+		// render the user interface. This should be correct by default,
+		// but can get out of whack if the user switches between Perspective
+		// and Orthographic views. This also helps the user during initial
+		// setup of the user interface hierarchy.
+		var cameraPosition = Vector3.zero;
+		if( camera.isOrthoGraphic )
+		{
+			camera.nearClipPlane = Mathf.Min( camera.nearClipPlane, -1f );
+			camera.farClipPlane = Mathf.Max( camera.farClipPlane, 1f );
+		}
+		else
+		{
+
+			// http://stackoverflow.com/q/2866350/154165
+			var fov = camera.fieldOfView * Mathf.Deg2Rad;
+			var corners = this.GetCorners();
+			var width = Vector3.Distance( corners[ 3 ], corners[ 0 ] );
+			var distance = width / ( 2f * Mathf.Tan( fov / 2f ) );
+			var back = transform.TransformDirection( Vector3.back ) * distance;
+
+			camera.farClipPlane = Mathf.Max( distance * 2f, camera.farClipPlane );
+			cameraPosition += back;
+
+		}
+
+		// Calculate a half-pixel offset for the camera, if needed
+		if( Application.isPlaying && needHalfPixelOffset() )
+		{
+
+			var height = camera.pixelHeight;
+			var pixelSize = ( 2f / height ) * ( (float)height / (float)FixedHeight );
+
+			// NOTE: The direction of the offset below is significant and should
+			// not be changed. It doesn't match some of the other examples I've 
+			// seen, but works well with the particulars of the DFGUI library.
+			var offset = new Vector3(
+				pixelSize * 0.5f,
+				pixelSize * -0.5f,
+				0
+			);
+
+			cameraPosition += offset;
+
+		}
+
+		// Adjust camera position if needed
+		if( Vector3.SqrMagnitude( camera.transform.localPosition - cameraPosition ) > float.Epsilon )
+		{
+			camera.transform.localPosition = cameraPosition;
+		}
+
+		camera.transform.hasChanged = false;
 
 	}
 
@@ -1528,31 +1613,32 @@ public class dfGUIManager : MonoBehaviour
 
 		}
 
-		if( Application.isPlaying && pixelPerfectMode )
-		{
+		//if( Application.isPlaying && pixelPerfectMode )
+		//{
 
-			var screenHeight = renderCamera.pixelHeight.Quantize( 2 );
+		//    var screenHeight = renderCamera.pixelHeight;
+		//    var pixelSize = ( 2f / screenHeight ) * ( screenHeight / (float)FixedHeight );
 
-			var pixelSize = ( 2f / screenHeight ) * ( screenHeight / (float)FixedHeight );
-			var offset = Vector3.zero;
-			if( needHalfPixelOffset() )
-			{
+		//    //int openGL = SystemInfo.graphicsDeviceVersion.StartsWith( "direct", StringComparison.InvariantCultureIgnoreCase ) ? 0 : 1;
 
-				float xmult = ( (int)renderCamera.pixelWidth % 2 == 0 ? 0.5f : 0f );
-				float ymult = ( (int)renderCamera.pixelHeight % 2 == 0 ? 0.5f : 0f );
+		//    //float xmult = ( (int)renderCamera.pixelWidth % 2 == openGL ? 0.5f : 0f );
+		//    //float ymult = ( (int)renderCamera.pixelHeight % 2 == openGL ? 0.5f : 0f );
 
-				offset = new Vector3( -pixelSize * xmult, pixelSize * ymult, 0 );
+		//    //var offset = transform.TransformDirection( new Vector3(
+		//    //    pixelSize * xmult,
+		//    //    pixelSize * ymult,
+		//    //    0
+		//    //) );
 
-			}
+		//    var verts = masterBuffer.Vertices;
+		//    for( int i = 0; i < verts.Count; i++ )
+		//    {
+		//        //var vert = offset + verts[ i ];
+		//        var vert = verts[ i ].Quantize( pixelSize );
+		//        verts[ i ] = vert;
+		//    }
 
-			var verts = masterBuffer.Vertices;
-			for( int i = 0; i < verts.Count; i++ )
-			{
-				var vert = verts[i].Quantize( pixelSize ) + offset;
-				verts[ i ] = vert;
-			}
-
-		}
+		//}
 
 		// Translate the "world" coordinates in the buffer back into local 
 		// coordinates relative to this GUIManager. This allows the GUIManager to be 
@@ -1582,6 +1668,7 @@ public class dfGUIManager : MonoBehaviour
 	private bool? applyHalfPixelOffset = null;
 	private bool needHalfPixelOffset()
 	{
+
 		if( applyHalfPixelOffset.HasValue )
 			return applyHalfPixelOffset.Value;
 
@@ -1707,8 +1794,6 @@ public class dfGUIManager : MonoBehaviour
 		// accumulator for opacity allows us to know a control's final
 		// calculated opacity
 		var effectiveOpacity = opacity * control.Opacity;
-		if( effectiveOpacity < 0.1f )
-			return;
 
 		// Grab the current clip region information off the stack
 		var clipInfo = clipStack.Peek();
@@ -1719,6 +1804,7 @@ public class dfGUIManager : MonoBehaviour
 		// Retrieve the control's bounds, which will be used in intersection testing
 		// and triangle clipping.
 		var bounds = control.GetBounds();
+		var controlRendered = false;
 
 		if( !( control is IDFMultiRender ) )
 		{
@@ -1729,7 +1815,10 @@ public class dfGUIManager : MonoBehaviour
 			if( controlData == null )
 				return;
 
-			processRenderData( ref buffer, controlData, bounds, checksum, clipInfo );
+			if( processRenderData( ref buffer, controlData, bounds, checksum, clipInfo ) )
+			{
+				controlRendered = true;
+			}
 
 		}
 		else
@@ -1747,12 +1836,23 @@ public class dfGUIManager : MonoBehaviour
 
 					var childBuffer = childBuffers[ i ];
 
-					processRenderData( ref buffer, childBuffer, bounds, checksum, clipInfo );
+					if( processRenderData( ref buffer, childBuffer, bounds, checksum, clipInfo ) )
+					{
+						controlRendered = true;
+					}
 
 				}
 
 			}
 
+		}
+
+		// Keep track of the number of controls rendered and where they 
+		// appear on screen
+		if( controlRendered )
+		{
+			ControlsRendered += 1;
+			occluders.Add( getControlOccluder( control ) );
 		}
 
 		// If the control has the "Clip child controls" option set, push
@@ -1779,7 +1879,31 @@ public class dfGUIManager : MonoBehaviour
 
 	}
 
-	private void processRenderData( ref dfRenderData buffer, dfRenderData controlData, Bounds bounds, uint checksum, ClipRegion clipInfo )
+	private Rect getControlOccluder( dfControl control )
+	{
+
+		var screenRect = control.GetScreenRect();
+
+		var hotZoneSize = new Vector2(
+			screenRect.width * control.HotZoneScale.x,
+			screenRect.height * control.HotZoneScale.y
+		);
+
+		var difference = new Vector2(
+			hotZoneSize.x - screenRect.width,
+			hotZoneSize.y - screenRect.height
+		) * 0.5f;
+
+		return new Rect(
+			screenRect.x - difference.x,
+			screenRect.y - difference.y,
+			hotZoneSize.x,
+			hotZoneSize.y
+		);
+
+	}
+
+	private bool processRenderData( ref dfRenderData buffer, dfRenderData controlData, Bounds bounds, uint checksum, ClipRegion clipInfo )
 	{
 
 		// A new draw call is needed every time the current Material 
@@ -1805,9 +1929,11 @@ public class dfGUIManager : MonoBehaviour
 		{
 			if( clipInfo.PerformClipping( buffer, bounds, checksum, controlData ) )
 			{
-				ControlsRendered += 1;
+				return true;
 			}
 		}
+
+		return false;
 
 	}
 
@@ -1931,6 +2057,19 @@ public class dfGUIManager : MonoBehaviour
 		{
 			controls[ i ].PerformLayout();
 		}
+
+		// EXPERIMENT: If in pixel-perfect mode, make sure all controls
+		// are pixel perfect after resolution change
+		for( int i = 0; i < controls.Length && pixelPerfectMode; i++ )
+		{
+
+			if( controls[i].Parent == null )
+			{
+				controls[ i ].MakePixelPerfect();
+			}
+
+		}
+
 	}
 
 	private void invalidateAllControls()

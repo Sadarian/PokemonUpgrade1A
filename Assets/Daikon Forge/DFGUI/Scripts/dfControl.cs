@@ -12,10 +12,92 @@ using System.Collections.Generic;
 using UnityColor = UnityEngine.Color;
 using UnityColor32 = UnityEngine.Color32;
 
+#region Documentation
 /// <summary>
 /// <b>Base class for all GUI controls</b>. Provides common functionality, event
 /// handling, and properties for all user interface controls.
+/// <h3>Control Position and Relative Coordinates</h3>
+/// <para>DF-GUI uses a parent-relative coordinate system where the origin (0,0)
+/// is at the upper left corner of the parent container, the horizontal axis
+/// increases to the right, and the vertical axis increases in the downward direction.</para>
+/// <para>For example, a control whose dfControl.RelativePosition value is set to 
+/// (10,15) will be located ten pixels to the right and fifteen pixels down from the 
+/// upper left corner of its container (or the upper-left corner of the screen if 
+/// the control has no parent container).</para>
+/// <para>Note that the value of the dfControl.RelativePosition and dfControl.Size
+/// properties are assumed to represent pixels.</para>
+/// <h3>Control Events</h3>
+/// <para>Control events in DF-GUI have been designed so that they can be used 
+/// in different ways depending on the needs of your game.</para>
+/// <h4>Direct events</h4>
+/// <para>Each control exposes a number of .NET events which can be subscribed to 
+/// using standard .NET event subscription semantics. For example, a script that 
+/// wishes to be notified whenever a dfLabel control named <b>health</b> has its 
+/// <b>Text</b> property changed might attach an event handler to the <b>dfLabel.TextChanged</b>
+/// event as follows:
+/// <pre>
+/// using UnityEngine;
+/// using System.Collections;
+/// using System.Collections.Generic;
+/// 
+/// public class Scratchpad : MonoBehaviour 
+/// {
+/// 
+/// 	public dfLabel health;
+/// 
+/// 	public void Start()
+/// 	{
+/// 		health.TextChanged += new PropertyChangedEventHandler<string>( health_TextChanged );
+/// 	}
+/// 
+/// 	void health_TextChanged( dfControl control, string value )
+/// 	{
+/// 		Debug.Log( "Health changed" );
+/// 	}
+/// 
+/// }
+/// </pre>
+/// </para>
+/// <h4>Reflection-based events</h4>
+/// <para>A script component which is attached to the same GameObject as a control component
+/// can also subscribe to events using a reflection-based model which involves creating an
+/// appropriately-named method for the desired event which follows a specific pattern.</para>
+/// <para>Such methods must be named On{XXX}, where {XXX} represents the name of the desired
+/// event. For example, a script wishing to be notified of a Click event occuring would define
+/// an event handler method as follows:
+/// <pre>
+/// public void OnClick( dfControl control, dfMouseEventArgs args )
+/// {
+/// 	Debug.Log( "My control was clicked" );
+/// }
+/// </pre></para>
+/// <para>In the above example, the method's name indicates that it should be called when the 
+/// <b>Click</b> event occurs, and the parameter list matches the MouseEventHandler signature 
+/// specified by the <b>Click</b> event.</para>
+/// <para>Event handlers specified in this manner also have the option of omitting all parameters.
+/// If only the fact that the control was clicked were important, and the parameters are not
+/// needed by the script, the above method could alternately be defined as:
+/// <pre>
+/// public void OnClick()
+/// {
+/// 	Debug.Log( "My control was clicked" );
+/// }
+/// </pre></para>
+/// <para>Note that either all parameters must be included, or no parameters must be included.
+/// It is not possible to only define only a subset of the defined parameters.</para>
+/// <h4>Event Bubbling</h4>
+/// <para>Many of the events raised by a dfControl instance will "bubble" up the control hierarchy.
+/// This means that the event will first be processed by the control that raises the event, then 
+/// that control's parent, then the control's parent's parent, and so on all the way up the control
+/// hierarchy.</para>
+/// <para>Specifically, any event whose method signature includes a dfControlEventArgs parameter
+/// (or any subclass of dfControlEventArgs such as dfMouseEventArgs or dfDragEventArgs) will 
+/// bubble up the hierarchy.</para>
+/// <para>For these events, the original source of the event can be determined by the value of the
+/// dfControlEventArgs.Source property. Whether the event has already been handled can be 
+/// determined by the value of the dfControlEventArgs.Used property.</para>
 /// </summary>
+#endregion
 [Serializable]
 [ExecuteInEditMode]
 [RequireComponent( typeof( BoxCollider ) )]
@@ -190,6 +272,22 @@ public abstract class dfControl : MonoBehaviour, IComparable<dfControl>
 
 	#endregion
 
+	#region Constants and static variables 
+
+	/// <summary>
+	/// The threshold at which a nearly-invisible control becomes completely invisible
+	/// </summary>
+	private const float MINIMUM_OPACITY = 0.0125f;
+
+	/// <summary>
+	/// Global version counter for controls, ensures that each control 
+	/// has a unique Version number
+	/// </summary>
+	// @private
+	private static uint versionCounter = 0x00;
+
+	#endregion
+
 	#region Serialized protected fields
 
 	[SerializeField]
@@ -248,6 +346,19 @@ public abstract class dfControl : MonoBehaviour, IComparable<dfControl>
 	[SerializeField]
 	protected int renderOrder = -1;
 
+	/// <summary>
+	/// Indicates whether this control should attempt to use localization
+	/// </summary>
+	[SerializeField]
+	protected bool isLocalized = false;
+
+	/// <summary>
+	/// Multiplier applied to collider to allow for "hot zone" that is 
+	/// larger than the control
+	/// </summary>
+	[SerializeField]
+	protected Vector2 hotZoneScale = Vector2.one;
+
 	#endregion
 
 	#region Private non-serialized fields 
@@ -276,6 +387,20 @@ public abstract class dfControl : MonoBehaviour, IComparable<dfControl>
 	/// </summary>
 	// @private
 	protected dfGUIManager manager = null;
+
+	/// <summary>
+	/// The <see cref="dfLanguageManager"/> instance which is responsible for returning
+	/// localized versions of data
+	/// </summary>
+	// @private
+	protected dfLanguageManager languageManager = null;
+
+	/// <summary>
+	/// Indicates whether a search for the localization manager has already been 
+	/// performed. Minimizes calls to GetComponent().
+	/// </summary>
+	// @private
+	protected bool languageManagerChecked = false;
 
 	/// <summary>
 	/// Used to detect when child nodes have been added to or removed
@@ -367,13 +492,6 @@ public abstract class dfControl : MonoBehaviour, IComparable<dfControl>
 	// @private
 	private uint version = 0x00;
 
-	/// <summary>
-	/// Global version counter for controls, ensures that each control 
-	/// has a unique Version number
-	/// </summary>
-	// @private
-	private static uint versionCounter = 0x00;
-
 	#endregion
 
 	#region Public properties
@@ -451,7 +569,14 @@ public abstract class dfControl : MonoBehaviour, IComparable<dfControl>
 	public virtual bool IsInteractive
 	{
 		get { return this.isInteractive; }
-		set { this.isInteractive = value; }
+		set
+		{
+			if( this.HasFocus && !value )
+			{
+				dfGUIManager.SetFocus( null );
+			}
+			this.isInteractive = value;
+		}
 	}
 
 	/// <summary>
@@ -837,6 +962,37 @@ public abstract class dfControl : MonoBehaviour, IComparable<dfControl>
 		get { return this.version; }
 	}
 
+	/// <summary>
+	/// Gets or sets a value indicating whether this controls should use
+	/// localized versions of its (class-specific) properties
+	/// </summary>
+	public bool IsLocalized
+	{
+		get { return this.isLocalized; }
+		set
+		{
+			this.isLocalized = value;
+			if( value )
+			{
+				this.Localize();
+			}
+		}
+	}
+
+	/// <summary>
+	/// Gets or sets the size (as a multiplier) of the "hot zone" around 
+	/// the control
+	/// </summary>
+	public Vector2 HotZoneScale
+	{
+		get { return this.hotZoneScale; }
+		set 
+		{
+			this.hotZoneScale = Vector2.Max( value, Vector2.zero );
+			Invalidate();
+		}
+	}
+
 	#endregion
 
 	#region Members used by GUIManager class and intended to be overridden 
@@ -846,7 +1002,7 @@ public abstract class dfControl : MonoBehaviour, IComparable<dfControl>
 	/// </summary>
 	public virtual bool CanFocus 
 	{ 
-		get { return this.canFocus; }
+		get { return this.canFocus && this.IsInteractive; }
 		set { this.canFocus = value; }
 	}
 
@@ -1380,7 +1536,7 @@ public abstract class dfControl : MonoBehaviour, IComparable<dfControl>
 	protected internal virtual void OnKeyPress( dfKeyEventArgs args )
 	{
 
-		if( !args.Used )
+		if( this.IsInteractive && !args.Used )
 		{
 
 			Signal( "OnKeyPress", args );
@@ -1409,14 +1565,29 @@ public abstract class dfControl : MonoBehaviour, IComparable<dfControl>
 	protected internal virtual void OnKeyDown( dfKeyEventArgs args )
 	{
 
-		if( !args.Used )
+		if( this.IsInteractive && !args.Used )
 		{
 
-			Signal( "OnKeyDown", args );
-
-			if( KeyDown != null )
+			// Special case : Tab key is used to navigate
+			if( args.KeyCode == KeyCode.Tab )
 			{
-				KeyDown( this, args );
+
+				// Call overridable function to handle tab key.
+				OnTabKeyPressed( args );
+
+			}
+
+			// Need to check args.Used again in case it was a tab key
+			if( !args.Used )
+			{
+
+				Signal( "OnKeyDown", args );
+
+				if( KeyDown != null )
+				{
+					KeyDown( this, args );
+				}
+
 			}
 
 		}
@@ -1428,6 +1599,82 @@ public abstract class dfControl : MonoBehaviour, IComparable<dfControl>
 
 	}
 
+	protected virtual void OnTabKeyPressed( dfKeyEventArgs args )
+	{
+
+		var sceneControls =
+			GetManager().GetComponentsInChildren<dfControl>()
+			.Where( c =>
+				c != this &&
+				c.TabIndex > 0 &&
+				c.IsInteractive &&
+				c.CanFocus &&
+				c.IsVisible
+			)
+			.ToList();
+
+		if( sceneControls.Count == 0 )
+			return;
+
+		sceneControls.Sort( ( lhs, rhs ) =>
+		{
+			
+			if( lhs.TabIndex == rhs.TabIndex )
+				return lhs.RenderOrder.CompareTo( rhs.RenderOrder );
+
+			return lhs.TabIndex.CompareTo( rhs.TabIndex );
+
+		} );
+
+		if( !args.Shift )
+		{
+
+			for( int i = 0; i < sceneControls.Count; i++ )
+			{
+
+				var nextControl = sceneControls[ i ];
+
+				if( nextControl.TabIndex >= this.TabIndex )
+				{
+
+					sceneControls[ i ].Focus();
+					args.Use();
+					
+					return;
+
+				}
+
+			}
+
+			sceneControls[ 0 ].Focus();
+			args.Use();
+
+			return;
+
+		}
+
+		for( int i = sceneControls.Count - 1; i >= 0; i-- )
+		{
+
+			var nextControl = sceneControls[ i ];
+
+			if( nextControl.TabIndex <= this.TabIndex )
+			{
+
+				sceneControls[ i ].Focus();
+				args.Use();
+
+				return;
+
+			}
+
+		}
+
+		sceneControls[ sceneControls.Count - 1 ].Focus();
+		args.Use();
+
+	}
+
 	/// <summary>
 	/// Called by <see cref="dfInputManager"/> when the user releases a key
 	/// while this control contains user input focus
@@ -1436,11 +1683,16 @@ public abstract class dfControl : MonoBehaviour, IComparable<dfControl>
 	protected internal virtual void OnKeyUp( dfKeyEventArgs args )
 	{
 
-		Signal( "OnKeyUp", args );
-
-		if( KeyUp != null )
+		if( this.IsInteractive )
 		{
-			KeyUp( this, args );
+
+			Signal( "OnKeyUp", args );
+
+			if( KeyUp != null )
+			{
+				KeyUp( this, args );
+			}
+
 		}
 
 		if( parent != null )
@@ -1744,6 +1996,29 @@ public abstract class dfControl : MonoBehaviour, IComparable<dfControl>
 	#endregion
 
 	#region Public methods 
+
+	/// <summary>
+	/// Causes the control to use localized data for its (class-specific)
+	/// properties.
+	/// </summary>
+	public void Localize()
+	{
+
+		if( !this.IsLocalized )
+			return;
+
+		if( languageManager == null )
+		{
+
+			this.languageManager = GetManager().GetComponent<dfLanguageManager>();
+			if( this.languageManager == null )
+				return;
+
+		}
+
+		OnLocalize();
+
+	}
 
 	/// <summary>
 	/// Simulates the user clicking on the control
@@ -2051,7 +2326,7 @@ public abstract class dfControl : MonoBehaviour, IComparable<dfControl>
 			// recursively iterates through all controls, and it's the first 
 			// dfControl with the isVisible field set to FALSE that controls the
 			// entire heirarchy below it.
-			var controlIsVisible = this.isVisible || this.Opacity < 0.1f;
+			var controlIsVisible = this.isVisible;
 			var controlIsEnabled = this.enabled && gameObject.activeSelf;
 			if( !controlIsVisible || !controlIsEnabled )
 				return null;
@@ -2065,15 +2340,9 @@ public abstract class dfControl : MonoBehaviour, IComparable<dfControl>
 			if( isControlInvalidated )
 			{
 
-				// NOTE: This should come first so that controls may choose
-				// whether to re-invalidate themselves during render, such 
-				// as controls which animate some element etc.
-				isControlInvalidated = false;
-
+				// Rebuild the control's render data and set collider size
 				renderData.Clear();
-
 				OnRebuildRenderData();
-
 				updateCollider();
 
 			}
@@ -2089,7 +2358,12 @@ public abstract class dfControl : MonoBehaviour, IComparable<dfControl>
 		}
 		finally
 		{
+		
 			rendering = false;
+
+			// At this point the control is considered to no longer need rendering
+			isControlInvalidated = false;
+		
 		}
 
 	}
@@ -2100,9 +2374,9 @@ public abstract class dfControl : MonoBehaviour, IComparable<dfControl>
 	public virtual void Invalidate()
 	{
 
-		this.isControlInvalidated = true;
-
 		updateVersion();
+
+		this.isControlInvalidated = true;
 
 		// NOTE: Not using the cached [view] property here. Workaround for a Unity bug
 		var myView = GetManager();
@@ -2119,18 +2393,17 @@ public abstract class dfControl : MonoBehaviour, IComparable<dfControl>
 	/// <param name="recursive">Set to TRUE if the layout information should be
 	/// reset recursively</param>
 	[HideInInspector]
-	public virtual void ResetLayout( bool recursive = false )
+	public virtual void ResetLayout( bool recursive = false, bool force = false )
 	{
 
-		bool dontPerformLayout =
-			IsPerformingLayout ||
-			IsLayoutSuspended;
-
-		if( dontPerformLayout )
+		bool dontPerformLayout = ( IsPerformingLayout || IsLayoutSuspended );
+		if( !force && dontPerformLayout )
 			return;
 
 		ensureLayoutExists();
-		layout.Reset();
+
+		layout.Attach( this );
+		layout.Reset( force );
 
 		if( recursive )
 		{
@@ -2222,7 +2495,7 @@ public abstract class dfControl : MonoBehaviour, IComparable<dfControl>
 	/// properties so that they lie exactly on pixel boundaries
 	/// </summary>
 	[HideInInspector]
-	public void MakePixelPerfect()
+	public void MakePixelPerfect( bool recursive = true )
 	{
 
 		this.size = this.size.RoundToInt();
@@ -2231,7 +2504,7 @@ public abstract class dfControl : MonoBehaviour, IComparable<dfControl>
 		transform.position = ( transform.position / p2u ).RoundToInt() * p2u;
 		cachedPosition = transform.localPosition;
 
-		for( int i = 0; i < controls.Count; i++ )
+		for( int i = 0; i < controls.Count && recursive; i++ )
 		{
 			controls[ i ].MakePixelPerfect();
 		}
@@ -2320,18 +2593,17 @@ public abstract class dfControl : MonoBehaviour, IComparable<dfControl>
 	public Rect GetScreenRect()
 	{
 
-		// TODO: Investigate non-"Pixel perfect" behavior - http://www.daikonforge.com/dfgui/forums/topic/getscreenrect-texture-sprite-and-pixelperfect-off/
-
 		var camera = GetCamera();
 		var corners = GetCorners();
 
-		var screenPos = camera.WorldToScreenPoint( corners[ 0 ] );
+		var screenUL = camera.WorldToScreenPoint( corners[ 0 ] );
+		var screenBR = camera.WorldToScreenPoint( corners[ 3 ] );
 
 		return new Rect(
-			screenPos.x, 
-			camera.pixelHeight - screenPos.y,
-			Size.x,
-			Size.y
+			screenUL.x,
+			Screen.height - screenUL.y,
+			screenBR.x - screenUL.x,
+			screenUL.y - screenBR.y
 		);
 
 	}
@@ -2369,23 +2641,13 @@ public abstract class dfControl : MonoBehaviour, IComparable<dfControl>
 
 		}
 
-		//
-		// If the Transform hierarchy didn't work, then attempt to find any 
-		// Manager in the scene. If one can be found return it but do not 
-		// cache the value on the assumption that later calls to this 
-		// function will eventually be able to find the Manager correctly.
-		//
-		// It is assumed that this is *fairly* safe to do because in most 
-		// cases there will only ever be one Manager in the scene at any given 
-		// time. It is certainly possible that this will not always be the
-		// case, but as this bug is an infrequent edge case to begin with 
-		// and there is no better solution apparent at this time... Meh.
-		//
+		// When a prefab is instantiated, it will not have a parent when the
+		// OnEnable() method is called. It is assumed that there is only one
+		// dfGUIManager in the scene.
 		var findView = FindObjectsOfType( typeof( dfGUIManager ) ).FirstOrDefault() as dfGUIManager;
-
 		if( findView != null )
 		{
-			return findView;
+			return manager = findView;
 		}
 
 		return null;
@@ -2459,8 +2721,50 @@ public abstract class dfControl : MonoBehaviour, IComparable<dfControl>
 	#region Protected methods 
 
 	[HideInInspector]
+	protected internal virtual void OnLocalize()
+	{
+		// Stub. Intended to be overridden by specific control types
+	}
+
+	[HideInInspector]
+	protected internal string getLocalizedValue( string key )
+	{
+
+		// If the control is not localized, or the application is not 
+		// currently running, then return original value
+		if( !this.IsLocalized || !Application.isPlaying )
+			return key;
+
+		if( languageManager == null )
+		{
+
+			// No language manager exists, return original value
+			if( languageManagerChecked )
+				return key;
+
+			// Indicate that a search has already been performed 
+			// for the active language manager
+			languageManagerChecked = true;
+
+			// Attempt to find a dfLanguageManager instance. If one
+			// could not be found, return the original value.
+			this.languageManager = GetManager().GetComponent<dfLanguageManager>();
+			if( this.languageManager == null )
+				return key;
+
+		}
+
+		// Return the localized version of the string
+		return languageManager.GetValue( key );
+
+	}
+
+	[HideInInspector]
 	protected internal virtual void updateCollider()
 	{
+
+		if( !this.isInteractive && Application.isPlaying )
+			return;
 
 		var myCollider = collider as BoxCollider;
 		if( myCollider == null )
@@ -2472,7 +2776,7 @@ public abstract class dfControl : MonoBehaviour, IComparable<dfControl>
 		var sizeInUnits = size * p2u;
 		var center = pivot.TransformToCenter( sizeInUnits );
 
-		myCollider.size = new Vector3( sizeInUnits.x, sizeInUnits.y, 0.001f );
+		myCollider.size = new Vector3( sizeInUnits.x * hotZoneScale.x, sizeInUnits.y * hotZoneScale.y, 0.001f );
 		myCollider.center = center;
 
 		if( Application.isPlaying && !this.IsInteractive )
@@ -2594,6 +2898,12 @@ public abstract class dfControl : MonoBehaviour, IComparable<dfControl>
 
 		Invalidate();
 
+		if( Anchor.IsAnyFlagSet( dfAnchorStyle.CenterHorizontal | dfAnchorStyle.CenterVertical ) )
+		{
+			ResetLayout();
+			PerformLayout();
+		}
+
 		if( PivotChanged != null )
 		{
 			PivotChanged( this, pivot );
@@ -2611,6 +2921,7 @@ public abstract class dfControl : MonoBehaviour, IComparable<dfControl>
 		var anchor = this.layout.AnchorStyle;
 
 		Invalidate();
+
 		ResetLayout();
 
 		if( anchor.IsAnyFlagSet( dfAnchorStyle.CenterHorizontal | dfAnchorStyle.CenterVertical ) )
@@ -2825,13 +3136,13 @@ public abstract class dfControl : MonoBehaviour, IComparable<dfControl>
 		// is properly set up when this function is called.
 		updateControlHeirarchy();
 
-		// Ensure that the control's layout is aware of its owner
-		layout.Attach( this );
-
 		// Make sure that the control remains at the same relative position
 		cachedPixelSize = 0f;
-		var oldPos = transform.localPosition / ( 2f / previousResolution.y.RoundToNearest( 2 ) );
-		cachedPosition = transform.localPosition = oldPos * ( 2f / currentResolution.y.RoundToNearest( 2 ) );
+		var oldPos = transform.localPosition / ( 2f / previousResolution.y );
+		cachedPosition = transform.localPosition = oldPos * ( 2f / currentResolution.y );
+
+		// Ensure that the control's layout is correct
+		layout.Attach( this );
 
 		// Make sure that the control's collider reflects the new position
 		updateCollider();
@@ -2855,7 +3166,7 @@ public abstract class dfControl : MonoBehaviour, IComparable<dfControl>
 		var collider = this.collider as BoxCollider;
 		collider.hideFlags = HideFlags.HideInInspector;
 
-		if( !IsVisible || Opacity < 0.1f )
+		if( !IsVisible || Opacity < MINIMUM_OPACITY )
 			return;
 
 		var center = pivot.TransformToCenter( Size ) * PixelsToUnits();
@@ -2871,6 +3182,18 @@ public abstract class dfControl : MonoBehaviour, IComparable<dfControl>
 		var thickness = new Vector3( 0, 0, 0.003f * ( renderOrder + 1 ) );
 		Gizmos.color = UnityColor.clear;
 		Gizmos.DrawCube( center, size + thickness );
+
+		// Render hot zone if set
+		if( !Vector2.Equals( this.HotZoneScale, Vector2.one ) )
+		{
+
+			size.x *= hotZoneScale.x;
+			size.y *= hotZoneScale.y;
+
+			Gizmos.color = new UnityColor( 1, 1, 0, 0.175f );
+			Gizmos.DrawWireCube( center, size );
+
+		}
 
 	}
 
@@ -2961,6 +3284,12 @@ public abstract class dfControl : MonoBehaviour, IComparable<dfControl>
 			Update();
 		}
 #endif
+
+		// Localize controls at startup
+		if( Application.isPlaying && this.IsLocalized )
+		{
+			Localize();
+		}
 
 		OnIsEnabledChanged();
 
@@ -3144,7 +3473,8 @@ public abstract class dfControl : MonoBehaviour, IComparable<dfControl>
 			// If the developer has moved the control using the on-screen translate
 			// widget in the editor or the control has been moved via script without
 			// using the built-in Position/RelativePosition methods, keep track of
-			// the new position and raise the PositionChanged event
+			// the new position and raise the PositionChanged event.
+			// To paraphrase a song, I just dropped in to see what condition my position is in.
 			if( ( cachedPosition - transform.localPosition ).sqrMagnitude > float.Epsilon )
 			{
 
@@ -3345,7 +3675,7 @@ public abstract class dfControl : MonoBehaviour, IComparable<dfControl>
 			// Add the dfControl to the hierarchy
 			child.parent = this;
 
-			// Controls need a new layout when parented to another dfControl
+			// TODO: Do controls need a new layout when parented to another dfControl?
 			//child.ResetLayout();
 
 			// Notify any observers that the control was added
@@ -3459,9 +3789,12 @@ public abstract class dfControl : MonoBehaviour, IComparable<dfControl>
 		}
 
 		// Make sure all child controls also have a layout
-		for( int i = 0; i < Controls.Count; i++ )
+		for( int i = 0; Controls != null && i < Controls.Count; i++ )
 		{
-			controls[ i ].ensureLayoutExists();
+			if( controls[ i ] != null )
+			{
+				controls[ i ].ensureLayoutExists();
+			}
 		}
 
 	}
@@ -3493,8 +3826,6 @@ public abstract class dfControl : MonoBehaviour, IComparable<dfControl>
 	private void initializeControl()
 	{
 
-		ensureLayoutExists();
-
 		if( renderOrder == -1 )
 		{
 			renderOrder = ZOrder;
@@ -3511,12 +3842,12 @@ public abstract class dfControl : MonoBehaviour, IComparable<dfControl>
 
 		}
 
-		updateControlHeirarchy( true );
+		// updateControlHeirarchy( true );
+		ensureLayoutExists();
 
 		Invalidate();
 
-		// TODO: Review why control colliders are set to trigger: See http://www.daikonforge.com/dfgui/forums/topic/no-mouse-input/
-		collider.isTrigger = true;
+		collider.isTrigger = false;
 
 	}
 
@@ -3525,7 +3856,6 @@ public abstract class dfControl : MonoBehaviour, IComparable<dfControl>
 
 		if( transform.parent == null )
 		{
-			//Debug.LogError( "Cannot compute relative position without a parent Transform for control " + this );
 			return Vector3.zero;
 		}
 
@@ -3868,22 +4198,55 @@ public abstract class dfControl : MonoBehaviour, IComparable<dfControl>
 			this.owner = ownerControl;
 		}
 
-		internal void Reset()
+		internal void Reset( bool force = false )
 		{
 
+			var layoutInProgress = !force && ( IsPerformingLayout || IsLayoutSuspended );
+
 			var cannotReset =
-				anchorStyle == dfAnchorStyle.None ||
-				IsPerformingLayout ||
-				IsLayoutSuspended ||
+				layoutInProgress ||
 				owner == null ||
 				!owner.gameObject.activeSelf;
 
 			if( cannotReset )
+			{
 				return;
+			}
 
-			var upperLeft = owner.RelativePosition;//.RoundToInt();
-			var controlSize = owner.Size;//.RoundToInt();
-			var parentSize = getParentSize();//.RoundToInt();
+			if( anchorStyle.IsFlagSet( dfAnchorStyle.Proportional ) )
+				resetLayoutProportional();
+			else
+				resetLayoutAbsolute();
+
+		}
+
+		private void resetLayoutProportional()
+		{
+
+			var upperLeft = owner.RelativePosition;
+			var controlSize = owner.Size;
+			var parentSize = getParentSize();
+
+			var left = upperLeft.x;
+			var top = upperLeft.y;
+			var right = left + controlSize.x;
+			var bottom = top + controlSize.y;
+
+			if( margins == null ) margins = new dfAnchorMargins();
+
+			margins.left = left / parentSize.x;
+			margins.right = right / parentSize.x;
+			margins.top = top / parentSize.y;
+			margins.bottom = bottom / parentSize.y;
+
+		}
+
+		private void resetLayoutAbsolute()
+		{
+
+			var upperLeft = owner.RelativePosition;
+			var controlSize = owner.Size;
+			var parentSize = getParentSize();
 
 			var left = upperLeft.x;
 			var top = upperLeft.y;
@@ -3908,7 +4271,6 @@ public abstract class dfControl : MonoBehaviour, IComparable<dfControl>
 
 			var cannotPerformLayout =
 				margins == null ||
-				anchorStyle == dfAnchorStyle.None ||
 				IsPerformingLayout ||
 				IsLayoutSuspended ||
 				owner == null ||
@@ -3926,78 +4288,156 @@ public abstract class dfControl : MonoBehaviour, IComparable<dfControl>
 				var parentSize = getParentSize();
 				var controlSize = owner.Size;
 
-				var left = margins.left;
-				var top = margins.top;
-				var right = left + controlSize.x;
-				var bottom = top + controlSize.y;
-
-				if( anchorStyle.IsFlagSet( dfAnchorStyle.CenterHorizontal ) )
-				{
-					left = Mathf.RoundToInt( ( parentSize.x - controlSize.x ) * 0.5f );
-					right = Mathf.RoundToInt( left + controlSize.x );
-				}
+				if( anchorStyle.IsFlagSet( dfAnchorStyle.Proportional ) )
+					performLayoutProportional( parentSize, controlSize );
 				else
-				{
-
-					if( anchorStyle.IsFlagSet( dfAnchorStyle.Left ) )
-					{
-						left = margins.left;
-						right = left + controlSize.x;
-					}
-
-					if( anchorStyle.IsFlagSet( dfAnchorStyle.Right ) )
-					{
-						right = ( parentSize.x - margins.right );
-						if( !anchorStyle.IsFlagSet( dfAnchorStyle.Left ) )
-						{
-							left = right - controlSize.x;
-						}
-					}
-
-				}
-
-				if( anchorStyle.IsFlagSet( dfAnchorStyle.CenterVertical ) )
-				{
-					top = Mathf.RoundToInt( ( parentSize.y - controlSize.y ) * 0.5f );
-					bottom = Mathf.RoundToInt( top + controlSize.y );
-				}
-				else
-				{
-
-					if( anchorStyle.IsFlagSet( dfAnchorStyle.Top ) )
-					{
-						top = margins.top;
-						bottom = top + controlSize.y;
-					}
-
-					if( anchorStyle.IsFlagSet( dfAnchorStyle.Bottom ) )
-					{
-						bottom = ( parentSize.y - margins.bottom );
-						if( !anchorStyle.IsFlagSet( dfAnchorStyle.Top ) )
-						{
-							top = bottom - controlSize.y;
-						}
-					}
-
-				}
-
-				var newSize = new Vector2(
-					Mathf.Max( 0, right - left ),
-					Mathf.Max( 0, bottom - top )
-					);
-					
-				// NOTE: It is very important to set Size before setting Position,
-				// since the Position property relies on the value of the Size
-				// property when calculating the transform position based on the 
-				// current value of the Pivot property
-				owner.Size = newSize; 
-				owner.RelativePosition = new Vector3( left, top );
+					performLayoutAbsolute( parentSize, controlSize );
 
 			}
 			finally
 			{
 				performingLayout = false;
 			}
+
+		}
+
+		private void performLayoutProportional( Vector2 parentSize, Vector2 controlSize )
+		{
+
+			var left = ( margins.left * parentSize.x );
+			var right = ( margins.right * parentSize.x );
+			var top = ( margins.top * parentSize.y );
+			var bottom = ( margins.bottom * parentSize.y );
+
+			var newPosition = owner.RelativePosition;
+			var newSize = controlSize;
+
+			if( anchorStyle.IsFlagSet( dfAnchorStyle.Left ) )
+			{
+
+				newPosition.x = left;
+
+				if( anchorStyle.IsFlagSet( dfAnchorStyle.Right ) )
+				{
+					newSize.x = ( margins.right - margins.left ) * parentSize.x;
+				}
+
+			}
+			else if( anchorStyle.IsFlagSet( dfAnchorStyle.Right ) )
+			{
+				newPosition.x = right - controlSize.x;
+			}
+			else if( anchorStyle.IsFlagSet( dfAnchorStyle.CenterHorizontal ) )
+			{
+				newPosition.x = ( parentSize.x - controlSize.x ) * 0.5f;
+			}
+
+			if( anchorStyle.IsFlagSet( dfAnchorStyle.Top ) )
+			{
+
+				newPosition.y = top;
+
+				if( anchorStyle.IsFlagSet( dfAnchorStyle.Bottom ) )
+				{
+					newSize.y = ( margins.bottom - margins.top ) * parentSize.y;
+				}
+
+			}
+			else if( anchorStyle.IsFlagSet( dfAnchorStyle.Bottom ) )
+			{
+				newPosition.y = bottom - controlSize.y;
+			}
+			else if( anchorStyle.IsFlagSet( dfAnchorStyle.CenterVertical ) )
+			{
+				newPosition.y = ( parentSize.y - controlSize.y ) * 0.5f;
+			}
+
+			// NOTE: It is very important to set Size before setting Position,
+			// since the Position property relies on the value of the Size
+			// property when calculating the transform position based on the 
+			// current value of the Pivot property
+			owner.Size = newSize;
+			owner.RelativePosition = newPosition;
+
+			// Proportional resizing has a very high likelihood of resulting
+			// in positions and dimensions that are fractional pixel sizes,
+			// which looks atrocious in pixel perfect mode. 
+			if( owner.GetManager().PixelPerfectMode )
+			{
+				owner.MakePixelPerfect( false );
+			}
+
+		}
+
+		private void performLayoutAbsolute( Vector2 parentSize, Vector2 controlSize )
+		{
+
+			var left = margins.left;
+			var top = margins.top;
+			var right = left + controlSize.x;
+			var bottom = top + controlSize.y;
+
+			if( anchorStyle.IsFlagSet( dfAnchorStyle.CenterHorizontal ) )
+			{
+				left = Mathf.RoundToInt( ( parentSize.x - controlSize.x ) * 0.5f );
+				right = Mathf.RoundToInt( left + controlSize.x );
+			}
+			else
+			{
+
+				if( anchorStyle.IsFlagSet( dfAnchorStyle.Left ) )
+				{
+					left = margins.left;
+					right = left + controlSize.x;
+				}
+
+				if( anchorStyle.IsFlagSet( dfAnchorStyle.Right ) )
+				{
+					right = ( parentSize.x - margins.right );
+					if( !anchorStyle.IsFlagSet( dfAnchorStyle.Left ) )
+					{
+						left = right - controlSize.x;
+					}
+				}
+
+			}
+
+			if( anchorStyle.IsFlagSet( dfAnchorStyle.CenterVertical ) )
+			{
+				top = Mathf.RoundToInt( ( parentSize.y - controlSize.y ) * 0.5f );
+				bottom = Mathf.RoundToInt( top + controlSize.y );
+			}
+			else
+			{
+
+				if( anchorStyle.IsFlagSet( dfAnchorStyle.Top ) )
+				{
+					top = margins.top;
+					bottom = top + controlSize.y;
+				}
+
+				if( anchorStyle.IsFlagSet( dfAnchorStyle.Bottom ) )
+				{
+					bottom = ( parentSize.y - margins.bottom );
+					if( !anchorStyle.IsFlagSet( dfAnchorStyle.Top ) )
+					{
+						top = bottom - controlSize.y;
+					}
+				}
+
+			}
+
+			var newSize = new Vector2(
+				Mathf.Max( 0, right - left ),
+				Mathf.Max( 0, bottom - top )
+				);
+
+			// NOTE: It is very important to set Size before setting Position,
+			// since the Position property relies on the value of the Size
+			// property when calculating the transform position based on the 
+			// current value of the Pivot property
+			owner.Size = newSize;
+			owner.RelativePosition = new Vector3( left, top );
 
 		}
 

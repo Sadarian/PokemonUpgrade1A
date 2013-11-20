@@ -554,8 +554,15 @@ Total controls: {3}
 		for( int i = 0; i < scriptTypes.Length; i++ )
 		{
 
+			// Fix for Unity error that results in a crash when it calls 
+			// MonoScript.GetClass() on certain shaders (and other files?)
+			if( scriptTypes[ i ].GetType() != typeof( MonoScript ) )
+			{
+				continue;
+			}
+
 			var path = AssetDatabase.GetAssetPath( scriptTypes[ i ] );
-			if( string.IsNullOrEmpty( path ) || path.Contains( "editor", true ) )
+			if( string.IsNullOrEmpty( path ) || path.Contains( "editor", true ) || !path.EndsWith( ".cs", StringComparison.InvariantCultureIgnoreCase ) )
 				continue;
 
 			var scriptClass = scriptTypes[ i ].GetClass();
@@ -671,6 +678,7 @@ Total controls: {3}
 	{
 
 		var savedColor = GUI.color;
+		var showDialog = false;
 
 		try
 		{
@@ -732,14 +740,22 @@ Total controls: {3}
 
 				if( GUI.enabled && GUILayout.Button( new GUIContent( " ", "Edit Atlas" ), "IN ObjectField", GUILayout.Width( 14 ) ) )
 				{
-					var dialog = dfPrefabSelectionDialog.Show( "Select Texture Atlas", typeof( dfAtlas ), selectionCallback, dfTextureAtlasInspector.DrawAtlasPreview, null );
-					dialog.previewSize = 200;
+					showDialog = true;
 				}
 
 			}
 			EditorGUILayout.EndHorizontal();
 
 			GUILayout.Space( 2 );
+
+			if( showDialog )
+			{
+				dfEditorUtil.DelayedInvoke( (Action)( () =>
+				{
+					var dialog = dfPrefabSelectionDialog.Show( "Select Texture Atlas", typeof( dfAtlas ), selectionCallback, dfTextureAtlasInspector.DrawAtlasPreview, null );
+					dialog.previewSize = 200;
+				} ) );
+			}
 
 		}
 		finally
@@ -754,6 +770,7 @@ Total controls: {3}
 	{
 
 		var savedColor = GUI.color;
+		var showDialog = false;
 
 		try
 		{
@@ -825,7 +842,7 @@ Total controls: {3}
 
 				if( GUI.enabled && GUILayout.Button( new GUIContent( " ", "Edit Font" ), "IN ObjectField", GUILayout.Width( 14 ) ) )
 				{
-					dfPrefabSelectionDialog.Show( "Select Font", typeof( dfFont ), selectionCallback, dfFontDefinitionInspector.DrawFontPreview, filterCallback );
+					showDialog = true;
 				}
 
 			}
@@ -838,6 +855,14 @@ Total controls: {3}
 			}
 
 			GUILayout.Space( 2 );
+
+			if( showDialog )
+			{
+				dfEditorUtil.DelayedInvoke( (Action)( () =>
+				{
+					dfPrefabSelectionDialog.Show( "Select Font", typeof( dfFont ), selectionCallback, dfFontDefinitionInspector.DrawFontPreview, filterCallback );
+				} ) );
+			}
 
 		}
 		finally

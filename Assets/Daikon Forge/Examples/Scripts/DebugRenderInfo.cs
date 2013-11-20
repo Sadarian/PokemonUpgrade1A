@@ -41,22 +41,25 @@ public class DebugRenderInfo : MonoBehaviour
 
 		float fps = 1f / ( elapsed / (float)frameCount );
 
+#if UNITY_EDITOR
 		var screenSize = view.GetScreenSize();
 		var screenSizeFormat = string.Format( "{0}x{1}", (int)screenSize.x, (int)screenSize.y );
+#else
+		var screenSize = new Vector2( Screen.width, Screen.height );
+		var screenSizeFormat = string.Format( "{0}x{1}", (int)screenSize.x, (int)screenSize.y );
+#endif
 
-		var totalControls =
-			view.GetComponentsInChildren<dfControl>()
-			.Length;
+		//var totalControls =
+		//    view.GetComponentsInChildren<dfControl>()
+		//    .Length;
 
-		var statusFormat = @"Screen : {0}, DrawCalls: {1}, Triangles: {2}, Controls: {3}, Rendered: {4}, Mem: {5:F0}MB, FPS: {6:F0}";
+		var statusFormat = @"Screen : {0}, DrawCalls: {1}, Triangles: {2}, Mem: {3:F0}MB, FPS: {4:F0}";
 
 		var status = string.Format(
 			statusFormat,
 			screenSizeFormat,
 			view.TotalDrawCalls,
 			view.TotalTriangles,
-			totalControls,
-			view.ControlsRendered,
 			GC.GetTotalMemory( false ) / 1048576f,
 			fps
 		);

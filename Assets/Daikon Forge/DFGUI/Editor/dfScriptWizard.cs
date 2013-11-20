@@ -55,6 +55,12 @@ public class dfScriptWizard : EditorWindow
 		if( control == null )
 			return;
 
+		if( string.IsNullOrEmpty( EditorApplication.currentScene ) )
+		{
+			EditorUtility.DisplayDialog( "Please save your scene", "Please save your scene before using the Script Wizard", "OK" );
+			return;
+		}
+
 		var events = control
 			.GetType()
 			.GetAllFields()

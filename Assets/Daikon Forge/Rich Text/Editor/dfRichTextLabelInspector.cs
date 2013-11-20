@@ -63,11 +63,32 @@ public class dfRichTextLabelInspector : dfControlInspector
 				control.FontSize = fontSize;
 			}
 
+			var lineheight = EditorGUILayout.IntField( "Line Height", control.LineHeight );
+			if( lineheight != control.LineHeight )
+			{
+				dfEditorUtil.MarkUndo( control, "Change Line Height" );
+				control.LineHeight = lineheight;
+			}
+
+			var scaleMode = (dfTextScaleMode)EditorGUILayout.EnumPopup( "Auto Scale", control.TextScaleMode );
+			if( scaleMode != control.TextScaleMode )
+			{
+				dfEditorUtil.MarkUndo( control, "Change Text Scale Mode" );
+				control.TextScaleMode = scaleMode;
+			}
+
 			var fontStyle = (FontStyle)EditorGUILayout.EnumPopup( "Text Style", control.FontStyle );
 			if( fontStyle != control.FontStyle )
 			{
 				dfEditorUtil.MarkUndo( control, "Change Font Style" );
 				control.FontStyle = fontStyle;
+			}
+
+			var preserveWhitespace = EditorGUILayout.Toggle( "Keep Whitespace", control.PreserveWhitespace );
+			if( preserveWhitespace != control.PreserveWhitespace )
+			{
+				dfEditorUtil.MarkUndo( control, "Change Preserve Whitespace" );
+				control.PreserveWhitespace = preserveWhitespace;
 			}
 
 			var textColor = EditorGUILayout.ColorField( "Text Color", control.Color );
@@ -93,6 +114,15 @@ public class dfRichTextLabelInspector : dfControlInspector
 
 		GUILayout.Label( "Scrolling", "HeaderLabel" );
 		{
+
+			var allowScrolling = EditorGUILayout.Toggle( "Allow Scroll", control.AllowScrolling );
+			if( allowScrolling != control.AllowScrolling )
+			{
+				dfEditorUtil.MarkUndo( control, "Toggle 'Allow Scrolling'" );
+				control.AllowScrolling = allowScrolling;
+			}
+
+			GUI.enabled = allowScrolling;
 
 			var scrollOffset = EditInt2( "Scroll Pos.", "X", "Y", control.ScrollPosition );
 			if( scrollOffset != control.ScrollPosition )
@@ -122,8 +152,11 @@ public class dfRichTextLabelInspector : dfControlInspector
 				control.VerticalScrollbar = vertScroll;
 			}
 
+			GUI.enabled = true;
+
 		}
 
+		var showDialog = false;
 		GUILayout.Label( "Text", "HeaderLabel" );
 		{
 
@@ -135,6 +168,22 @@ public class dfRichTextLabelInspector : dfControlInspector
 				control.Text = text;
 			}
 
+			if( GUILayout.Button( "Open Text Editor" ) )
+			{
+				showDialog = true;
+			}
+
+		}
+
+		// Moved the dialog display code outside of all grouping code to resolve
+		// an InvalidOperationException that happens in some circumstances and 
+		// appears to be Mac-specific
+		if( showDialog )
+		{
+			dfTextEditorWindow.Show( "Edit Rich Text", control.Text, ( text ) =>
+			{
+				control.Text = text;
+			} );
 		}
 
 		return true;

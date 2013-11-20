@@ -26,7 +26,7 @@ using UnityFont = UnityEngine.Font;
 [ExecuteInEditMode]
 [Serializable]
 [AddComponentMenu( "Daikon Forge/User Interface/Dynamic Font" )]
-public class dfDynamicFont : MonoBehaviour
+public class dfDynamicFont : dfFontBase
 {
 
 	#region Static variables 
@@ -62,6 +62,119 @@ public class dfDynamicFont : MonoBehaviour
 
 	#endregion
 
+	#region dfFontBase overrides 
+
+	/// <summary>
+	/// Gets or sets the Material that will be used to render text
+	/// </summary>
+	public override UnityMaterial Material
+	{
+		get
+		{
+			this.material.mainTexture = this.baseFont.material.mainTexture;
+			return this.material;
+		}
+		set
+		{
+			if( value != this.material )
+			{
+				this.material = value;
+				dfGUIManager.RefreshAll();
+			}
+		}
+	}
+
+	/// <summary>
+	/// Returns a reference to the texture which contains the
+	/// glyph images that will be used to render text
+	/// </summary>
+	public override Texture Texture
+	{
+		get { return this.baseFont.material.mainTexture; }
+	}
+
+	/// <summary>
+	/// Returns a value indicating whether the font configuration is valid
+	/// </summary>
+	public override bool IsValid
+	{
+		get
+		{
+			return
+				this.baseFont != null &&
+				this.Material != null &&
+				this.Texture != null;
+		}
+	}
+
+	/// <summary>
+	/// Gets or sets the base font size that the Font is set to. This value
+	/// *must* match the [Font Size] value of the Font, as it is used during
+	/// rendering to calculate the vertical offset of each character.
+	/// </summary>
+	public override int FontSize
+	{
+		get { return this.baseFontSize; }
+		set
+		{
+			if( value != this.baseFontSize )
+			{
+				this.baseFontSize = value;
+				dfGUIManager.RefreshAll();
+			}
+		}
+	}
+
+	/// <summary>
+	/// Gets or sets the default minimum height of each line of rendered text
+	/// </summary>
+	public override int LineHeight
+	{
+		get { return this.lineHeight; }
+		set
+		{
+			if( value != this.lineHeight )
+			{
+				this.lineHeight = value;
+				dfGUIManager.RefreshAll();
+			}
+		}
+	}
+
+	public override dfFontRendererBase ObtainRenderer()
+	{
+		throw new NotImplementedException();
+		//return DynamicFontRenderer.Obtain();
+	}
+
+	public override int GetKerning( char previousChar, char currentChar )
+	{
+		// TODO: See if kerning data can be extracted from TTF font files during dynamic font creation
+		return 0;
+	}
+
+	public override dfFont.GlyphDefinition GetGlyph( char character )
+	{
+
+		var glyph = RequestCharacters( character.ToString(), this.FontSize, FontStyle.Normal )[ 0 ];
+		var vert = glyph.vert;
+
+		return new dfFont.GlyphDefinition()
+		{
+			X = 0,
+			Y = 0,
+			id = character,
+			XOffset = (int)vert.x,
+			YOffset = (int)Mathf.Abs( vert.y ),
+			XAdvance = (int)( vert.x + vert.width ),
+			Height = (int)vert.height,
+			Width = (int)vert.width,
+		};
+
+	}
+
+	#endregion
+
 	#region Public properties
 
 	/// <summary>
@@ -81,44 +194,6 @@ public class dfDynamicFont : MonoBehaviour
 		}
 	}
 
-	/// <summary>
-	/// Gets or sets the Material that will be used to render text
-	/// </summary>
-	public UnityMaterial Material
-	{
-		get
-		{
-			this.material.mainTexture = this.baseFont.material.mainTexture;
-			return this.material; 
-		}
-		set
-		{
-			if( value != this.material )
-			{
-				this.material = value;
-				dfGUIManager.RefreshAll();
-			}
-		}
-	}
-
-	/// <summary>
-	/// Gets or sets the base font size that the Font is set to. This value
-	/// *must* match the [Font Size] value of the Font, as it is used during
-	/// rendering to calculate the vertical offset of each character.
-	/// </summary>
-	public int FontSize
-	{
-		get { return this.baseFontSize; }
-		set
-		{
-			if( value != this.baseFontSize )
-			{
-				this.baseFontSize = value;
-				dfGUIManager.RefreshAll();
-			}
-		}
-	}
-
 	public int Baseline
 	{
 		get { return this.baseline; }
@@ -127,19 +202,6 @@ public class dfDynamicFont : MonoBehaviour
 			if( value != this.baseline )
 			{
 				this.baseline = value;
-				dfGUIManager.RefreshAll();
-			}
-		}
-	}
-
-	public int LineHeight
-	{
-		get { return this.lineHeight; }
-		set
-		{
-			if( value != this.lineHeight )
-			{
-				this.lineHeight = value;
 				dfGUIManager.RefreshAll();
 			}
 		}
@@ -381,6 +443,11 @@ public class dfDynamicFont : MonoBehaviour
 		}
 
 	}
+
+	#endregion
+
+	#region Nested classes 
+
 
 	#endregion
 

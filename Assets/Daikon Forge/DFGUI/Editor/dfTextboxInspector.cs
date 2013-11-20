@@ -137,6 +137,13 @@ public class dfTextboxInspector : dfControlInspector
 					control.MobileAutoCorrect = useAutoCorrect;
 				}
 
+				var hideInputField = EditorGUILayout.Toggle( "Hide Input", control.HideMobileInputField );
+				if( hideInputField != control.HideMobileInputField )
+				{
+					dfEditorUtil.MarkUndo( control, "Toggle 'Hide Input Field'" );
+					control.HideMobileInputField = hideInputField;
+				}
+
 			}
 		
 		}
@@ -168,6 +175,13 @@ public class dfTextboxInspector : dfControlInspector
 			{
 				dfEditorUtil.MarkUndo( control, "Change Text Scale" );
 				control.TextScale = textScale;
+			}
+
+			var scaleMode = (dfTextScaleMode)EditorGUILayout.EnumPopup( "Auto Scale", control.TextScaleMode );
+			if( scaleMode != control.TextScaleMode )
+			{
+				dfEditorUtil.MarkUndo( control, "Change Text Scale Mode" );
+				control.TextScaleMode = scaleMode;
 			}
 
 			var padding = EditPadding( "Padding", control.Padding );

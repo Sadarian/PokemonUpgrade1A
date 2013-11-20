@@ -207,6 +207,13 @@ public class dfControlInspector : Editor
 				control.MaximumSize = maxSize;
 			}
 
+			var hotZoneScale = EditFloat2( "Hot Zone Scale", "X", "Y", control.HotZoneScale );
+			if( !Vector2.Equals( hotZoneScale, control.HotZoneScale ) )
+			{
+				dfEditorUtil.MarkUndo( control, "Change Hot Zone Scale" );
+				control.HotZoneScale = hotZoneScale;
+			}
+
 		}
 
 		GUILayout.Label( "Behavior", "HeaderLabel" );
@@ -292,6 +299,20 @@ public class dfControlInspector : Editor
 					control.ZOrder = zorder;
 				}
 
+			}
+
+			var tabIndex = EditorGUILayout.IntField( "Tab Index", control.TabIndex );
+			if( tabIndex != control.TabIndex )
+			{
+				dfEditorUtil.MarkUndo( control, "Change control Tab Index" );
+				control.TabIndex = tabIndex;
+			}
+
+			var tooltip = EditorGUILayout.TextField( "Tooltip", control.Tooltip );
+			if( tooltip != control.Tooltip )
+			{
+				dfEditorUtil.MarkUndo( control, "Change control Tooltip" );
+				control.Tooltip = tooltip;
 			}
 
 		}
@@ -441,7 +462,7 @@ public class dfControlInspector : Editor
 			GUILayout.BeginVertical();
 			{
 
-				EditorGUIUtility.LookLikeControls( 50f );
+				EditorGUIUtility.LookLikeControls( 60f );
 
 				var x = EditorGUILayout.IntField( label1, Mathf.RoundToInt( value.x ) );
 				var y = EditorGUILayout.IntField( label2, Mathf.RoundToInt( value.y ) );
@@ -701,12 +722,6 @@ public class dfControlInspector : Editor
 			}
 			EditorGUILayout.EndHorizontal();
 
-			if( value != null && !dfAtlas.Equals( atlas, value.Atlas ) )
-			{
-				GUI.color = Color.white;
-				EditorGUILayout.HelpBox( "The selected font does not use the same Atlas as the control", MessageType.Error );
-			}
-
 			GUILayout.Space( 2 );
 
 		}
@@ -844,6 +859,8 @@ public class dfControlInspector : Editor
 	private dfAnchorStyle EditAnchor( dfAnchorStyle value, int labelWidth = 85 )
 	{
 
+		const float OPTION_WIDTH = 100f;
+
 		var labelWidthSave = dfEditorUtil.LabelWidth;
 
 		var retVal = value;
@@ -859,7 +876,7 @@ public class dfControlInspector : Editor
 			GUILayout.BeginVertical();
 			{
 
-				EditorGUIUtility.LookLikeControls( 90f );
+				EditorGUIUtility.LookLikeControls( OPTION_WIDTH );
 
 				var left = EditorGUILayout.Toggle( "Left", retVal.IsFlagSet( dfAnchorStyle.Left ) );
 				var right = EditorGUILayout.Toggle( "Right", retVal.IsFlagSet( dfAnchorStyle.Right ) );
@@ -897,7 +914,7 @@ public class dfControlInspector : Editor
 			GUILayout.BeginVertical();
 			{
 
-				EditorGUIUtility.LookLikeControls( 90f );
+				EditorGUIUtility.LookLikeControls( OPTION_WIDTH );
 
 				var horz = EditorGUILayout.Toggle( "Horizontal", retVal.IsFlagSet( dfAnchorStyle.CenterHorizontal ) );
 				var vert = EditorGUILayout.Toggle( "Vertical", retVal.IsFlagSet( dfAnchorStyle.CenterVertical ) );
@@ -916,6 +933,27 @@ public class dfControlInspector : Editor
 					retVal = retVal.SetFlag( dfAnchorStyle.Top, false );
 					retVal = retVal.SetFlag( dfAnchorStyle.Bottom, false );
 				}
+
+			}
+			GUILayout.EndVertical();
+
+			GUILayout.FlexibleSpace();
+
+		}
+		GUILayout.EndHorizontal();
+
+		GUILayout.BeginHorizontal();
+		{
+
+			EditorGUILayout.LabelField( "Mode", "", GUILayout.Width( labelWidth ) );
+
+			GUILayout.BeginVertical();
+			{
+
+				EditorGUIUtility.LookLikeControls( OPTION_WIDTH );
+
+				var proportional = EditorGUILayout.Toggle( "Proportional", retVal.IsFlagSet( dfAnchorStyle.Proportional ) );
+				retVal = retVal.SetFlag( dfAnchorStyle.Proportional, proportional );
 
 			}
 			GUILayout.EndVertical();
@@ -982,7 +1020,7 @@ public class dfControlInspector : Editor
 	private List<ResizeUndoInfo> resizeUndoData = new List<ResizeUndoInfo>();
 	private int resizeHandleIndex = -1;
 	private bool isDraggingEdge = false;
-	private bool isDraggingControl = false;
+	private bool isMovingWithSnap = false;
 
 	public virtual void OnSceneGUI()
 	{
@@ -1037,11 +1075,11 @@ public class dfControlInspector : Editor
 		{
 
 			case EventType.keyDown:
-				if( evt.keyCode == KeyCode.Escape && ( isDraggingEdge || isDraggingControl ) )
+				if( evt.keyCode == KeyCode.Escape && ( isDraggingEdge || isMovingWithSnap ) )
 				{
 
 					isDraggingEdge = false;
-					isDraggingControl = false;
+					isMovingWithSnap = false;
 					resizeHandleIndex = -1;
 
 					undoResize();
@@ -1142,6 +1180,7 @@ public class dfControlInspector : Editor
 					resizeHandleIndex = -1;
 
 					var startDragging =
+						Selection.gameObjects.Length == 1 &&
 						snapToGrid &&
 						evt.button == 0 &&
 						Tools.current == Tool.Move &&
@@ -1149,7 +1188,7 @@ public class dfControlInspector : Editor
 
 					if( startDragging )
 					{
-						isDraggingControl = true;
+						isMovingWithSnap = true;
 						saveResizeUndoInfo();
 						lastDragMousePos = roundToNearest( getGUIManagerPosition( evt.mousePosition ), gridSize );
 					}
@@ -1161,7 +1200,7 @@ public class dfControlInspector : Editor
 			case EventType.mouseDrag:
 				if( resizeHandleIndex == -1 )
 				{
-					if( isDraggingControl )
+					if( isMovingWithSnap )
 					{
 
 						var dragMousePos = roundToNearest( getGUIManagerPosition( evt.mousePosition ), gridSize );
@@ -1238,14 +1277,14 @@ public class dfControlInspector : Editor
 					GUIUtility.hotControl = GUIUtility.keyboardControl = 0;
 
 				}
-				else if( isDraggingControl )
+				else if( isMovingWithSnap )
 				{
-					isDraggingControl = false;
+					isMovingWithSnap = false;
 					snapSelectionToGrid();
-					resetSelectionLayouts();
 				}
-				isDraggingControl = false;
+				isMovingWithSnap = false;
 				isDraggingEdge = false;
+				resetSelectionLayouts();
 				break;
 
 		}
@@ -1255,12 +1294,16 @@ public class dfControlInspector : Editor
 	private void resetSelectionLayouts()
 	{
 
-		var transforms = Selection.transforms;
+		var controls =
+			Selection.gameObjects
+			.Select( c => c.GetComponent<dfControl>() )
+			.Where( c => c != null )
+			.ToList();
 
-		for( int i = 0; i < transforms.Length; i++ )
+		for( int i = 0; i < controls.Count; i++ )
 		{
 
-			var controlComponent = transforms[ i ].GetComponent<dfControl>();
+			var controlComponent = controls[ i ];
 			if( controlComponent != null )
 			{
 				
@@ -1270,7 +1313,8 @@ public class dfControlInspector : Editor
 					controlComponent.PerformLayout();
 				}
 
-				controlComponent.ResetLayout();
+				controlComponent.ResetLayout( false, true );
+				EditorUtility.SetDirty( controlComponent );
 
 			}
 
@@ -1308,7 +1352,7 @@ public class dfControlInspector : Editor
 			var controlComponent = transforms[ i ].GetComponent<dfControl>();
 			if( controlComponent != null )
 			{
-				controlComponent.ResetLayout();
+				controlComponent.ResetLayout( false, true );
 			}
 		}
 
@@ -2178,13 +2222,13 @@ public class dfControlInspector : Editor
 			var offset = corners[ 0 ] - position;
 
 			control.transform.position = new Vector3(
-				minX + offset.x,
+				minX - offset.x,
 				position.y,
 				position.z
 			);
 
 			control.MakePixelPerfect();
-			control.ResetLayout();
+			control.ResetLayout( false, true );
 
 		}
 
@@ -2233,7 +2277,7 @@ public class dfControlInspector : Editor
 			);
 
 			control.MakePixelPerfect();
-			control.ResetLayout();
+			control.ResetLayout( false, true );
 
 		}
 
@@ -2282,7 +2326,7 @@ public class dfControlInspector : Editor
 			);
 
 			control.MakePixelPerfect();
-			control.ResetLayout();
+			control.ResetLayout( false, true );
 
 		}
 
@@ -2331,7 +2375,7 @@ public class dfControlInspector : Editor
 			);
 
 			control.MakePixelPerfect();
-			control.ResetLayout();
+			control.ResetLayout( false, true );
 
 		}
 
@@ -2382,7 +2426,7 @@ public class dfControlInspector : Editor
 			);
 
 			control.MakePixelPerfect();
-			control.ResetLayout();
+			control.ResetLayout( false, true );
 
 		}
 
@@ -2434,7 +2478,7 @@ public class dfControlInspector : Editor
 			);
 
 			control.MakePixelPerfect();
-			control.ResetLayout();
+			control.ResetLayout( false, true );
 
 		}
 
@@ -2555,6 +2599,7 @@ public class dfControlInspector : Editor
 			);
 
 			control.MakePixelPerfect();
+			control.ResetLayout( false, true );
 
 		}
 
@@ -2605,6 +2650,7 @@ public class dfControlInspector : Editor
 			);
 
 			control.MakePixelPerfect();
+			control.ResetLayout( false, true );
 
 		}
 

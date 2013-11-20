@@ -62,6 +62,11 @@ public class SpellInventory : MonoBehaviour
 		}
 	}
 
+	public void OnResolutionChanged()
+	{
+		needRefresh = true;
+	}
+
 	#endregion
 
 	#region Private utility methods

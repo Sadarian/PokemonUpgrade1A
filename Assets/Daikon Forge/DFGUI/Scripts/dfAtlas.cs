@@ -23,7 +23,7 @@ using System.Collections.Generic;
 public class dfAtlas : MonoBehaviour
 {
 
-	#region Nested public classes 
+	#region Nested public classes
 
 	/// <summary>
 	/// Encapsulates the information needed to render a single sprite
@@ -33,7 +33,7 @@ public class dfAtlas : MonoBehaviour
 	public class ItemInfo : IComparable<ItemInfo>, IEquatable<ItemInfo>
 	{
 
-		#region Public serialized fields 
+		#region Public serialized fields
 
 		/// <summary>
 		/// The name of the sprite
@@ -57,29 +57,31 @@ public class dfAtlas : MonoBehaviour
 		public bool rotated;
 
 		/// <summary>
-		/// Original sprite texture. Should not be used by consumer code, this 
-		/// is only retained to enable the process of rebuilding a Texture Atlas
-		/// and adding additional textures whenever needed without having to 
-		/// start over.
+		/// Returns the size of the sprite
 		/// </summary>
-		public Texture2D texture;
-
-		#endregion 
-
-		#region Public properties 
+		public Vector2 sizeInPixels = Vector2.zero;
 
 		/// <summary>
-		/// The size of the sprite specified in pixels
+		/// Used by the design-time editor. Do not use.
 		/// </summary>
-		public Vector2 sizeInPixels 
-		{ 
-			get 
-			{
-				if( texture == null )
-					return Vector2.zero;
-				return new Vector2( texture.width, texture.height ); 
-			} 
-		}
+		[SerializeField]
+		public string textureGUID = "";
+
+		#endregion
+
+		#region Public non-serialized fields
+
+		public bool deleted = false;
+
+		#endregion
+
+		#region Obsolete fields
+
+		/// <summary>
+		/// Exists for backward compatibility only. *WILL* be deleted soon.
+		/// </summary>
+		[SerializeField]
+		public Texture2D texture = null;
 
 		#endregion
 
@@ -103,7 +105,7 @@ public class dfAtlas : MonoBehaviour
 
 		#endregion
 
-		#region Equality members 
+		#region Equality members
 
 		// @cond DOXY_IGNORE
 		public override int GetHashCode()
@@ -115,8 +117,8 @@ public class dfAtlas : MonoBehaviour
 		// @cond DOXY_IGNORE
 		public override bool Equals( object obj )
 		{
-				
-			if( !(obj is ItemInfo) )
+
+			if( !( obj is ItemInfo ) )
 				return false;
 
 			return this.name.Equals( ( (ItemInfo)obj ).name );
@@ -165,41 +167,89 @@ public class dfAtlas : MonoBehaviour
 
 	#endregion
 
-	#region Public fields 
+	#region Serialized fields
 
 	/// <summary>
 	/// The Material that will be used to render any sprites rendered from this Texture Atlas
 	/// </summary>
-	public Material material;
-
-	/// <summary>
-	/// The Texture2D instance containing all of the sprites in this Texture Atlas
-	/// </summary>
-	public Texture2D Texture { get { return material.mainTexture as Texture2D; } }
+	[SerializeField]
+	protected Material material;
 
 	/// <summary>
 	/// The list of sprites available in this Texture Atlas
 	/// </summary>
-	public List<ItemInfo> items = new List<ItemInfo>();
+	[SerializeField]
+	protected List<ItemInfo> items = new List<ItemInfo>();
 
 	#endregion
 
-	#region Private instance variables 
+	#region Private instance variables
 
 	private Dictionary<string, ItemInfo> map = new Dictionary<string, ItemInfo>();
+
+	private dfAtlas replacementAtlas = null;
 
 	#endregion
 
 	#region Public properties
 
 	/// <summary>
+	/// The Texture2D instance containing all of the sprites in this Texture Atlas
+	/// </summary>
+	public Texture2D Texture
+	{
+		get { return replacementAtlas != null ? replacementAtlas.Texture : material.mainTexture as Texture2D; }
+	}
+
+	/// <summary>
 	/// Returns the number of sprites available in this Texture Atlas
 	/// </summary>
-	public int Count { get { return items.Count; } }
+	public int Count
+	{
+		get { return replacementAtlas != null ? replacementAtlas.Count : items.Count; }
+	}
+
+	/// <summary>
+	/// Returns the list of sprites defined in this Texture Atlas
+	/// </summary>
+	public List<ItemInfo> Items
+	{
+		get { return replacementAtlas != null ? replacementAtlas.Items : items; }
+	}
+
+	/// <summary>
+	/// Returns a reference to the Material that will be used to render sprites 
+	/// in this Texture Atlas
+	/// </summary>
+	public Material Material
+	{
+		get { return replacementAtlas != null ? replacementAtlas.Material : this.material; }
+		set
+		{
+			if( replacementAtlas != null )
+			{
+				replacementAtlas.Material = value;
+			}
+			else
+			{
+				this.material = value;
+			}
+		}
+	}
+
+	/// <summary>
+	/// Gets or sets a replacement atlas, allowing requests from sprites in this 
+	/// atlas to be forwarded to the replacement.
+	/// </summary>
+	public dfAtlas Replacement
+	{
+		get { return this.replacementAtlas; }
+		set { this.replacementAtlas = value; }
+	}
 
 	#endregion
 
-	#region Indexers 
+	#region Indexers
 
 	/// <summary>
 	/// Retrieves sprite information by searching by sprite name
@@ -210,6 +260,9 @@ public class dfAtlas : MonoBehaviour
 	{
 		get
 		{
+
+			if( replacementAtlas != null )
+				return replacementAtlas[ key ];
 
 			if( string.IsNullOrEmpty( key ) )
 				return null;
@@ -236,7 +289,7 @@ public class dfAtlas : MonoBehaviour
 	/// </summary>
 	internal static bool Equals( dfAtlas lhs, dfAtlas rhs )
 	{
-			
+
 		if( object.ReferenceEquals( lhs, rhs ) )
 			return true;
 

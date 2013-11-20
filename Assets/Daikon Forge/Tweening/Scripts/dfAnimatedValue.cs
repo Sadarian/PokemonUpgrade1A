@@ -226,7 +226,7 @@ public class dfAnimatedColor32 : dfAnimatedValue<Color32>
 /// <summary>
 /// Allows simple and easy animation (tweening) of value types.
 /// This class allows you to specify an <a href="http://www.robertpenner.com/easing/" target="_blank">easing function</a>
-/// that will be applied to the value over time to label the shape of the animation curve.
+/// that will be applied to the value over time to control the shape of the animation curve.
 /// </summary>
 public abstract class dfAnimatedValue<T> where T: struct
 {

@@ -69,7 +69,7 @@ public class dfRadialSprite : dfSprite
 		if( spriteInfo == null )
 			return;
 
-		renderData.Material = Atlas.material;
+		renderData.Material = Atlas.Material;
 
 		List<Vector3> verts = null;
 		List<int> triangles = null;

@@ -5,15 +5,17 @@ using System.Collections.Generic;
 public class TouchStateDisplayEvents : MonoBehaviour 
 {
 
-	private dfLabel _label;
+	public dfLabel _label;
 
 	private List<string> messages = new List<string>();
 
 	public void Start()
 	{
-		// Obtain a reference to the dfLabel instance attached to this object
-		this._label = GetComponent<dfLabel>();
-		_label.Text = "Touch State";
+		if( _label == null )
+		{
+			this._label = GetComponent<dfLabel>();
+			_label.Text = "Touch State";
+		}
 	}
 
 	public void OnDragDrop( dfControl control, dfDragEventArgs dragEvent )

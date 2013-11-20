@@ -172,7 +172,7 @@ public class dfTextureSprite : dfControl
 	}
 
 	/// <summary>
-	/// Returns a reference to the material that the label is currently 
+	/// Returns a reference to the material that the control is currently 
 	/// using to render the texture, which may be a different instance than
 	/// the reference in the Material property
 	/// </summary>

@@ -131,24 +131,43 @@ public class dfSpriteInspector : dfControlInspector
 			var replacementScript = Resources
 				.FindObjectsOfTypeAll( typeof( MonoScript ) )
 				.Cast<MonoScript>()
-				.Where( x => x.GetClass() == spriteTypes[ newIndex ] )
+				.Where( x => 
+					x.GetType() == typeof( MonoScript ) && // Fix for Unity crash bug
+					x.GetClass() == spriteTypes[ newIndex ] 
+				)
 				.FirstOrDefault();
 
 			if( replacementScript == null )
 				return false;
 
-			// Assign the selected MonoScript 
-			scriptProperty.objectReferenceValue = replacementScript;
-			scriptProperty.serializedObject.ApplyModifiedProperties();
-			scriptProperty.serializedObject.Update();
+			var activeObject = Selection.activeGameObject;
+			Selection.activeGameObject = null;
 
-			// Save the scene in case Unity crashes
-			EditorUtility.SetDirty( this.target );
-			EditorApplication.SaveScene();
-			EditorApplication.SaveAssets();
+			dfEditorUtil.DelayedInvoke( () =>
+			{
 
-			var message = "The sprite type has been changed to " + spriteTypeNames[ newIndex ] + ". Due to a bug in Unity, it might be necessary to deselect and then reselect the control before the Inspector reflects this change.";
-			EditorUtility.DisplayDialog( "Change Sprite Type", message, "OK" );
+				// Assign the selected MonoScript 
+				scriptProperty.objectReferenceValue = replacementScript;
+				scriptProperty.serializedObject.ApplyModifiedProperties();
+				scriptProperty.serializedObject.Update();
+
+				// Obtain a reference to the new dfSprite component
+				var sprite = activeObject.GetComponent<dfSprite>();
+				sprite.Invalidate();
+
+				// Save the scene in case Unity crashes
+				EditorUtility.SetDirty( sprite );
+				EditorApplication.SaveScene();
+				EditorApplication.SaveAssets();
+
+				dfEditorUtil.DelayedInvoke( () =>
+				{
+					Selection.activeGameObject = activeObject;
+				} );
+
+			} );
+
+			return true;
 
 		}
 
@@ -176,12 +195,7 @@ public class dfSpriteInspector : dfControlInspector
 		if( spriteInfo == null )
 			return;
 
-		var texture = sprite.SpriteInfo.texture;
-		if( texture == null )
-			return;
-
-		var size = new Vector2( texture.width, texture.height );
-
+		var size = sprite.SpriteInfo.sizeInPixels;
 		var destRect = rect;
 
 		if( destRect.width < size.x || destRect.height < size.y )
@@ -204,7 +218,7 @@ public class dfSpriteInspector : dfControlInspector
 		if( destRect.height < rect.height ) destRect.y = rect.y + ( rect.height - destRect.height ) * 0.5f;
 
 		//EditorGUI.DrawPreviewTexture( destRect, texture );
-		GUI.DrawTexture( destRect, texture );
+		dfEditorUtil.DrawSprite( destRect, sprite.Atlas, sprite.SpriteName );
 
 		var border = spriteInfo.border;
 		if( border.horizontal > 0 || border.vertical > 0 )

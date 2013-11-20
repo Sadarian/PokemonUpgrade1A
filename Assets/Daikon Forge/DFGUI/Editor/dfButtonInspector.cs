@@ -9,7 +9,7 @@ using System.Collections;
 using System.Collections.Generic;
 
 [CanEditMultipleObjects]
-[CustomEditor( typeof( dfButton ) )]
+[CustomEditor( typeof( dfButton ), true )]
 public class dfButtonInspector : dfControlInspector
 {
 
@@ -173,6 +173,13 @@ public class dfButtonInspector : dfControlInspector
 			{
 				dfEditorUtil.MarkUndo( control, "Change Text Scale" );
 				control.TextScale = textScale;
+			}
+
+			var scaleMode = (dfTextScaleMode)EditorGUILayout.EnumPopup( "Auto Scale", control.TextScaleMode );
+			if( scaleMode != control.TextScaleMode )
+			{
+				dfEditorUtil.MarkUndo( control, "Change Text Scale Mode" );
+				control.TextScaleMode = scaleMode;
 			}
 
 			var wordwrap = EditorGUILayout.Toggle( "Word Wrap", control.WordWrap );

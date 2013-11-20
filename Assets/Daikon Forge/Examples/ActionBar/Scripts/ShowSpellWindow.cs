@@ -39,7 +39,7 @@ public class ShowSpellWindow : MonoBehaviour
 		window.GetManager().BringToFront( window );
 
 		var opacity = new dfAnimatedFloat( 1f, 0f, 0.33f );
-		while( opacity > 0.1f )
+		while( opacity > 0.05f )
 		{
 			window.Opacity = opacity;
 			yield return null;

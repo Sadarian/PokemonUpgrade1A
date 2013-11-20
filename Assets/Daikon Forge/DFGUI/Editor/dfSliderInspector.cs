@@ -91,8 +91,15 @@ public class dfSliderInspector : dfControlInspector
 			var thumb = EditorGUILayout.ObjectField( "Thumb", control.Thumb, typeof( dfControl ), true ) as dfControl;
 			if( thumb != control.Thumb )
 			{
-				dfEditorUtil.MarkUndo( control, "Assign Thumb Object" );
-				control.Thumb = thumb;
+				if( thumb == null || thumb.transform.IsChildOf( control.transform ) )
+				{
+					dfEditorUtil.MarkUndo( control, "Assign Thumb Object" );
+					control.Thumb = thumb;
+				}
+				else
+				{
+					EditorUtility.DisplayDialog( "Invalid Control", "You can only assign controls to this property that are a child of the " + control.name + " control", "OK" );
+				}
 			}
 
 			if( thumb != null )
@@ -110,8 +117,15 @@ public class dfSliderInspector : dfControlInspector
 			var fill = EditorGUILayout.ObjectField( "Progress", control.Progress, typeof( dfControl ), true ) as dfControl;
 			if( fill != control.Progress )
 			{
-				dfEditorUtil.MarkUndo( control, "Assign Thumb Object" );
-				control.Progress = fill;
+				if( fill == null || fill.transform.IsChildOf( control.transform ) )
+				{
+					dfEditorUtil.MarkUndo( control, "Assign Thumb Object" );
+					control.Progress = fill;
+				}
+				else
+				{
+					EditorUtility.DisplayDialog( "Invalid Control", "You can only assign controls to this property that are a child of the " + control.name + " control", "OK" );
+				}
 			}
 
 			if( fill != null )

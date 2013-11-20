@@ -69,7 +69,7 @@ public delegate void FocusEventHandler( dfControl control, dfFocusEventArgs args
 /// Used by the dfScriptWizard class to display events in grouped categories
 /// </summary>
 [AttributeUsage( AttributeTargets.Delegate, Inherited = true, AllowMultiple = false )]
-public class dfEventCategoryAttribute : Attribute
+public class dfEventCategoryAttribute : System.Attribute
 {
 
 	public string Category { get; private set; }
@@ -186,6 +186,11 @@ public class dfDragEventArgs : dfControlEventArgs
 	/// </summary>
 	public dfControl Target { get; set; }
 
+	/// <summary>
+	/// Returns the Ray that was used to raycast during the mouse event
+	/// </summary>
+	public Ray Ray { get; set; }
+
 	#endregion
 
 	#region Constructors
@@ -202,6 +207,7 @@ public class dfDragEventArgs : dfControlEventArgs
 		this.Data = data;
 		this.State = state;
 		this.Position = position;
+		this.Ray = ray;
 	}
 
 	#endregion
@@ -400,6 +406,5 @@ public class dfTouchEventArgs : dfMouseEventArgs
 	}
 
 	#endregion
-
 
 }

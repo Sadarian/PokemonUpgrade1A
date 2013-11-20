@@ -169,7 +169,7 @@ public class dfResizeHandle : dfControl
 			return;
 		}
 
-		renderData.Material = Atlas.material;
+		renderData.Material = Atlas.Material;
 
 		var color = ApplyOpacity( IsEnabled ? this.color : this.disabledColor );
 		var options = new dfSprite.RenderOptions()
@@ -291,8 +291,13 @@ public class dfResizeHandle : dfControl
 			bottom = Mathf.Min( maxEdgePos.y, Mathf.Max( minEdgePos.y, bottom + offset.y ) );
 		}
 
-		parent.Size = new Vector2( right - left, bottom - top ).RoundToInt();
-		parent.RelativePosition = new Vector3( left, top, 0 ).RoundToInt();
+		parent.Size = new Vector2( right - left, bottom - top );
+		parent.RelativePosition = new Vector3( left, top, 0 );
+
+		if( parent.GetManager().PixelPerfectMode )
+		{
+			parent.MakePixelPerfect();
+		}
 
 	}
 

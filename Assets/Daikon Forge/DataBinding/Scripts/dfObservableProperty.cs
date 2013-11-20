@@ -25,14 +25,13 @@ public class dfObservableProperty : IObservableValue
 
 	#region Private instance fields
 
-	private ValueGetter getter;
-	private ValueSetter setter;
 	private object lastValue;
 	private bool hasChanged = false;
 
 	private object target;
 	private FieldInfo fieldInfo;
 	private PropertyInfo propertyInfo;
+	private MethodInfo propertyGetter;
 
 	#endregion
 
@@ -135,13 +134,6 @@ public class dfObservableProperty : IObservableValue
 		this.target = target;
 		this.fieldInfo = field;
 
-		getter = getFieldValue;
-
-		if( !field.IsLiteral )
-			setter = setFieldValue;
-		else
-			setter = setFieldValueNOP;
-
 		Value = getter();
 
 	}
@@ -152,15 +144,6 @@ public class dfObservableProperty : IObservableValue
 		this.target = target;
 		this.propertyInfo = property;
 
-		getter = getPropertyValue;
-
-		var propertySet = property.GetSetMethod();
-
-		if( property.CanWrite && propertySet != null )
-			setter = setPropertyValue;
-		else
-			setter = setPropertyValueNOP;
-
 		Value = getter();
 
 	}
@@ -169,13 +152,44 @@ public class dfObservableProperty : IObservableValue
 
 	#region Read/write values from a Property
 
+	private object getter()
+	{
+		if( propertyInfo != null )
+			return getPropertyValue();
+		else
+			return getFieldValue();
+	}
+
+	private void setter( object value )
+	{
+		if( propertyInfo != null )
+			setPropertyValue( value );
+		else
+			setFieldValue( value );
+	}
+
 	private object getPropertyValue()
 	{
-		return propertyInfo.GetValue( target, null );
+
+		if( propertyGetter == null )
+		{
+			propertyGetter = propertyInfo.GetGetMethod();
+			if( propertyGetter == null )
+			{
+				throw new InvalidOperationException( "Cannot read property: " + propertyInfo );
+			}
+		}
+
+		return propertyGetter.Invoke( target, null );
+
 	}
 
 	private void setPropertyValue( object value )
 	{
+
+		var propertySet = propertyInfo.GetSetMethod();
+		if( !propertyInfo.CanWrite || propertySet == null )
+			return;
 
 		var propertyType = propertyInfo.PropertyType;
 
@@ -191,17 +205,15 @@ public class dfObservableProperty : IObservableValue
 
 	}
 
-	private void setPropertyValueNOP( object value )
-	{
-		// Property is read-only, perform no action
-	}
-
 	#endregion
 
 	#region Read/write values from a Field
 
 	private void setFieldValue( object value )
 	{
+
+		if( fieldInfo.IsLiteral )
+			return;
 
 		var fieldType = this.fieldInfo.FieldType;
 

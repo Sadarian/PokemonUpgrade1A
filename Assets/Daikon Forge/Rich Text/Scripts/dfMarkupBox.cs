@@ -430,6 +430,7 @@ public class dfMarkupBox
 
 		var lineWidth = Mathf.Max( currentLine.Size.x, boxPosition.x + box.Size.x );
 		var lineHeight = Mathf.Max( currentLine.Size.y, boxPosition.y + box.Size.y );
+
 		currentLine.Size = new Vector2( lineWidth, lineHeight );
 
 	}
@@ -780,7 +781,7 @@ public class dfMarkupBoxSprite : dfMarkupBox
 
 			dfSlicedSprite.renderSprite( renderData, options );
 
-			renderData.Material = Atlas.material;
+			renderData.Material = Atlas.Material;
 			renderData.Transform = Matrix4x4.identity;
 
 		}
@@ -1050,7 +1051,6 @@ public class dfMarkupBoxText : dfMarkupBox
 
 			var glyph = glyphs[ i ];
 			var width = glyph.vert.x + glyph.vert.width;
-			var height = Mathf.Abs( glyph.vert.y + glyph.vert.height );
 
 			if( effectiveText[ i ] == ' ' )
 			{
@@ -1062,7 +1062,6 @@ public class dfMarkupBoxText : dfMarkupBox
 			}
 
 			size.x += width;
-			size.y = Mathf.Max( size.y, height );
 
 		}
 
@@ -1214,7 +1213,7 @@ public class dfMarkupBoxText : dfMarkupBox
 
 			var yadjust = ( font.FontSize + glyph.vert.y ) - fontSize + descent;
 			var quadLeft = ( x + glyph.vert.x );
-			var quadTop = yadjust;
+			var quadTop = ( yadjust );
 			var quadRight = ( quadLeft + glyph.vert.width );
 			var quadBottom = ( quadTop + glyph.vert.height );
 

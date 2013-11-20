@@ -99,7 +99,7 @@ public class dfAnimationClipInspector : Editor
 		{
 			if( clip.Sprites != null && clip.Sprites.Count > 0 )
 			{
-				dfEditorUtil.DrawTexture( rect, clip.Atlas[ clip.Sprites[ 0 ] ].texture );
+				DrawSprite( rect, clip.Atlas, clip.Sprites[ 0 ]  );
 				return;
 			}
 		}
@@ -119,13 +119,43 @@ public class dfAnimationClipInspector : Editor
 		{
 			if( clip.Sprites != null && clip.Sprites.Count > 0 )
 			{
-				GUI.DrawTexture( rect, clip.Atlas[ clip.Sprites[ 0 ] ].texture );
+				DrawSprite( rect, clip.Atlas, clip.Sprites[ 0 ] );
 				return true;
 			}
 		}
 
 		return false;
 
+	}
+
+	private static void DrawSprite( Rect rect, dfAtlas atlas, string sprite )
+	{
+
+		var spriteInfo = atlas[ sprite ];
+		var size = spriteInfo.sizeInPixels;
+		var destRect = rect;
+
+		if( destRect.width < size.x || destRect.height < size.y )
+		{
+
+			var newHeight = size.y * rect.width / size.x;
+			if( newHeight <= rect.height )
+				destRect.height = newHeight;
+			else
+				destRect.width = size.x * rect.height / size.y;
+
+		}
+		else
+		{
+			destRect.width = size.x;
+			destRect.height = size.y;
+		}
+
+		if( destRect.width < rect.width ) destRect.x = rect.x + ( rect.width - destRect.width ) * 0.5f;
+		if( destRect.height < rect.height ) destRect.y = rect.y + ( rect.height - destRect.height ) * 0.5f;
+
+		dfEditorUtil.DrawSprite( destRect, atlas, sprite );
+	
 	}
 
 	#endregion
@@ -284,9 +314,9 @@ public class dfAnimationClipInspector : Editor
 
 		var results = new List<string>();
 
-		for( int i = 0; i < animation.Atlas.items.Count; i++ )
+		for( int i = 0; i < animation.Atlas.Items.Count; i++ )
 		{
-			var item = animation.Atlas.items[ i ].name;
+			var item = animation.Atlas.Items[ i ].name;
 			if( item.StartsWith( prefix, StringComparison.InvariantCultureIgnoreCase ) )
 			{
 				if( !animation.Sprites.Contains( item ) )

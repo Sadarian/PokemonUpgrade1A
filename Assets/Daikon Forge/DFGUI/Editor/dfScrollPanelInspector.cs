@@ -176,4 +176,44 @@ public class dfScrollPanelInspector : dfControlInspector
 
 	}
 
+	protected override void FillContextMenu( List<ContextMenuItem> menu )
+	{
+
+		if( Selection.gameObjects.Length == 1 )
+		{
+
+			menu.Add( new ContextMenuItem()
+			{
+				MenuText = "Fit to contents",
+				Handler = ( control ) =>
+				{
+
+					dfEditorUtil.MarkUndo( control, "Fit to contents" );
+
+					var panel = control as dfScrollPanel;
+					panel.FitToContents();
+
+				}
+			} );
+
+			menu.Add( new ContextMenuItem()
+			{
+				MenuText = "Center child controls",
+				Handler = ( control ) =>
+				{
+
+					dfEditorUtil.MarkUndo( control, "Center child controls" );
+
+					var panel = control as dfScrollPanel;
+					panel.CenterChildControls();
+
+				}
+			} );
+
+		}
+
+		base.FillContextMenu( menu );
+
+	}
+
 }

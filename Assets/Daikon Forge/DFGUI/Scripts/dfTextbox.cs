@@ -84,6 +84,9 @@ public class dfTextbox : dfInteractiveBase
 	protected float textScale = 1f;
 
 	[SerializeField]
+	protected dfTextScaleMode textScaleMode = dfTextScaleMode.None;
+
+	[SerializeField]
 	protected RectOffset padding = new RectOffset();
 
 	[SerializeField]
@@ -117,6 +120,9 @@ public class dfTextbox : dfInteractiveBase
 	protected bool mobileAutoCorrect = false;
 
 	[SerializeField]
+	protected bool mobileHideInputField = false;
+
+	[SerializeField]
 	protected dfMobileKeyboardTrigger mobileKeyboardTrigger = dfMobileKeyboardTrigger.Manual;
 
 	[SerializeField]
@@ -125,6 +131,8 @@ public class dfTextbox : dfInteractiveBase
 	#endregion
 
 	#region Private unserialized fields 
+
+	private Vector2 startSize = Vector2.zero;
 
 	private int selectionStart = 0;
 	private int selectionEnd = 0;
@@ -137,8 +145,8 @@ public class dfTextbox : dfInteractiveBase
 	private float whenGotFocus = 0f;
 	private string undoText = "";
 
-#if ( UNITY_IPHONE || UNITY_ANDROID || UNITY_BLACKBERRY || UNITY_WP8 ) && !UNITY_EDITOR
-	private TouchScreenKeyboard mobileKeyboard;
+#if UNITY_IPHONE || UNITY_ANDROID || UNITY_BLACKBERRY || UNITY_WP8 || UNITY_EDITOR
+	private static TouchScreenKeyboard mobileKeyboard;
 #endif
 
 	#endregion
@@ -433,6 +441,16 @@ public class dfTextbox : dfInteractiveBase
 	}
 
 	/// <summary>
+	/// Gets or sets whether the TextScale property will be automatically 
+	/// adjusted to match runtime screen resolution
+	/// </summary>
+	public dfTextScaleMode TextScaleMode
+	{
+		get { return this.textScaleMode; }
+		set { this.textScaleMode = value; Invalidate(); }
+	}
+
+	/// <summary>
 	/// Gets or sets the maximum number of characters that can be entered
 	/// by the user
 	/// </summary>
@@ -520,8 +538,6 @@ public class dfTextbox : dfInteractiveBase
 		}
 	}
 
-#if UNITY_IPHONE || UNITY_ANDROID || UNITY_BLACKBERRY || UNITY_WP8 || UNITY_EDITOR
-
 	/// <summary>
 	/// Gets or sets whether to use the on-screen keyboard on mobile devices
 	/// </summary>
@@ -531,6 +547,7 @@ public class dfTextbox : dfInteractiveBase
 		set { this.useMobileKeyboard = value; }
 	}
 
+#if UNITY_IPHONE || UNITY_ANDROID || UNITY_BLACKBERRY || UNITY_WP8 || UNITY_EDITOR
 	/// <summary>
 	/// Gets or sets the type of on-screen keyboard to display
 	/// </summary>
@@ -539,6 +556,7 @@ public class dfTextbox : dfInteractiveBase
 		get { return (TouchScreenKeyboardType)this.mobileKeyboardType; }
 		set { this.mobileKeyboardType = (int)value; }
 	}
+#endif
 
 	/// <summary>
 	/// Gets or sets whether to use the auto-correct feature on mobile devices
@@ -547,6 +565,16 @@ public class dfTextbox : dfInteractiveBase
 	{
 		get { return this.mobileAutoCorrect; }
 		set { this.mobileAutoCorrect = value; }
+	}
+
+	/// <summary>
+	/// Gets or sets whether the input field will be visible when the 
+	/// mobile keyboard is active
+	/// </summary>
+	public bool HideMobileInputField
+	{
+		get { return this.mobileHideInputField; }
+		set { this.mobileHideInputField = value; }
 	}
 
 	/// <summary>
@@ -559,11 +587,32 @@ public class dfTextbox : dfInteractiveBase
 		set { this.mobileKeyboardTrigger = value; }
 	}
 
-#endif
-
 	#endregion
 
 	#region Overrides and events
+
+	protected override void OnTabKeyPressed( dfKeyEventArgs args )
+	{
+
+		if( acceptsTab )
+		{
+
+			// Give event observers the opportunity to cancel the event
+			base.OnKeyPress( args );
+			if( args.Used )
+				return;
+
+			// Handle the tab key like any other key
+			args.Character = '\t';
+			processKeyPress( args );
+
+		}
+		else
+		{
+			base.OnTabKeyPressed( args );
+		}
+
+	}
 
 	protected internal override void OnKeyPress( dfKeyEventArgs args )
 	{
@@ -578,6 +627,17 @@ public class dfTextbox : dfInteractiveBase
 		base.OnKeyPress( args );
 		if( args.Used )
 			return;
+
+#if !( UNITY_IPHONE || UNITY_ANDROID || UNITY_BLACKBERRY || UNITY_WP8 ) || UNITY_EDITOR
+
+		processKeyPress( args );
+
+#endif
+
+	}
+
+	private void processKeyPress( dfKeyEventArgs args )
+	{
 
 		deleteSelection();
 
@@ -595,6 +655,7 @@ public class dfTextbox : dfInteractiveBase
 
 			cursorIndex += 1;
 
+			OnTextChanged();
 			Invalidate();
 
 		}
@@ -613,6 +674,8 @@ public class dfTextbox : dfInteractiveBase
 		base.OnKeyDown( args );
 		if( args.Used )
 			return;
+
+#if !( UNITY_IPHONE || UNITY_ANDROID || UNITY_BLACKBERRY || UNITY_WP8 ) || UNITY_EDITOR
 
 		switch( args.KeyCode )
 		{
@@ -722,6 +785,8 @@ public class dfTextbox : dfInteractiveBase
 
 		args.Use();
 
+#endif
+
 	}
 
 	private void selectAll()
@@ -769,6 +834,9 @@ public class dfTextbox : dfInteractiveBase
 		text = buffer.ToString();
 
 		setCursorPos( cursorIndex );
+
+		OnTextChanged();
+		Invalidate();
 
 	}
 
@@ -857,8 +925,11 @@ public class dfTextbox : dfInteractiveBase
 			return;
 
 		text = text.Remove( cursorIndex - 1, 1 );
+
 		cursorIndex -= 1;
 		cursorShown = true;
+
+		OnTextChanged();
 		Invalidate();
 		
 	}
@@ -878,6 +949,9 @@ public class dfTextbox : dfInteractiveBase
 
 		setCursorPos( startIndex );
 
+		OnTextChanged();
+		Invalidate();
+
 	}
 
 	private void deleteSelection()
@@ -887,9 +961,11 @@ public class dfTextbox : dfInteractiveBase
 			return;
 
 		text = text.Remove( selectionStart, selectionEnd - selectionStart );
+
 		setCursorPos( selectionStart );
 		ClearSelection();
 
+		OnTextChanged();
 		Invalidate();
 
 	}
@@ -903,6 +979,8 @@ public class dfTextbox : dfInteractiveBase
 
 		text = text.Remove( cursorIndex, 1 );
 		cursorShown = true;
+
+		OnTextChanged();
 		Invalidate();
 		
 	}
@@ -920,6 +998,7 @@ public class dfTextbox : dfInteractiveBase
 
 		text = text.Remove( cursorIndex, endIndex - cursorIndex );
 
+		OnTextChanged();
 		Invalidate();
 
 	}
@@ -1180,7 +1259,7 @@ public class dfTextbox : dfInteractiveBase
 		if( Atlas == null || Font == null )
 			return;
 
-		renderData.Material = Atlas.material;
+		renderData.Material = Atlas.Material;
 
 		renderBackground();
 		renderText();
@@ -1218,16 +1297,31 @@ public class dfTextbox : dfInteractiveBase
 
 	}
 
+	public override void Awake()
+	{
+		base.Awake();
+		startSize = this.Size;
+	}
+
 #if ( UNITY_IPHONE || UNITY_ANDROID || UNITY_BLACKBERRY || UNITY_WP8 ) && !UNITY_EDITOR
 	public override void Update()
 	{
 
 		base.Update();
 
-		if( mobileKeyboard != null )
+		// This functionality cannot be used in the Editor, so just exit
+		if( Application.isEditor )
+			return;
+
+		// Since this function is only concerned with the mobile keyboard, 
+		// if this control does not have input focus, no further action is
+		// necessary.
+		if( this.HasFocus && mobileKeyboard != null )
 		{
 			if( mobileKeyboard.done )
 			{
+
+				ClearSelection();
 
 				this.Text = mobileKeyboard.text;
 				mobileKeyboard = null;
@@ -1240,10 +1334,12 @@ public class dfTextbox : dfInteractiveBase
 				mobileKeyboard = null;
 				OnCancel();
 			}
-			else
+			else if( mobileHideInputField )
 			{
 				this.Text = mobileKeyboard.text;
+				moveToEnd();
 			}
+
 		}
 
 	}
@@ -1258,6 +1354,9 @@ public class dfTextbox : dfInteractiveBase
 
 		if( useMobileKeyboard && this.mobileKeyboardTrigger == dfMobileKeyboardTrigger.ShowOnClick )
 		{
+			ClearSelection();
+			selectToEnd();
+			TouchScreenKeyboard.hideInput = mobileHideInputField;
 			mobileKeyboard = TouchScreenKeyboard.Open( this.text, (TouchScreenKeyboardType)mobileKeyboardType, mobileAutoCorrect, false, IsPasswordField );
 		}
 
@@ -1290,6 +1389,9 @@ public class dfTextbox : dfInteractiveBase
 #if ( UNITY_IPHONE || UNITY_ANDROID || UNITY_BLACKBERRY || UNITY_WP8 ) && !UNITY_EDITOR
 			if( useMobileKeyboard && this.mobileKeyboardTrigger == dfMobileKeyboardTrigger.ShowOnFocus )
 			{
+				ClearSelection();
+				selectToEnd();
+				TouchScreenKeyboard.hideInput = mobileHideInputField;
 				mobileKeyboard = TouchScreenKeyboard.Open( this.text, (TouchScreenKeyboardType)mobileKeyboardType, mobileAutoCorrect, false, IsPasswordField );
 			}
 #endif
@@ -1304,6 +1406,14 @@ public class dfTextbox : dfInteractiveBase
 	{
 
 		base.OnLostFocus( args );
+
+#if UNITY_IPHONE || UNITY_ANDROID || UNITY_BLACKBERRY || UNITY_WP8 || UNITY_EDITOR
+		if( mobileKeyboard != null )
+		{
+			mobileKeyboard.active = false;
+			mobileKeyboard = null;
+		}
+#endif
 
 		cursorShown = false;
 		ClearSelection();
@@ -1495,13 +1605,15 @@ public class dfTextbox : dfInteractiveBase
 
 		var renderColor = IsEnabled ? TextColor : DisabledColor;
 
+		var scaleMultiplier = getTextScaleMultiplier();
+
 		using( var textRenderer = font.ObtainRenderer() )
 		{
 
 			textRenderer.WordWrap = false;
 			textRenderer.MaxSize = maxSize;
 			textRenderer.PixelRatio = p2u;
-			textRenderer.TextScale = TextScale;
+			textRenderer.TextScale = TextScale * scaleMultiplier;
 			textRenderer.VectorOffset = origin;
 			textRenderer.MultiLine = false;
 			textRenderer.TextAlign = TextAlignment.Left;
@@ -1583,6 +1695,23 @@ public class dfTextbox : dfInteractiveBase
 			}
 
 		}
+
+	}
+
+	private float getTextScaleMultiplier()
+	{
+
+		if( textScaleMode == dfTextScaleMode.None || !Application.isPlaying )
+			return 1f;
+
+		// Return the difference between design resolution and current resolution
+		if( textScaleMode == dfTextScaleMode.ScreenResolution )
+		{
+			return (float)Screen.height / (float)manager.FixedHeight;
+		}
+
+		// Return scale based on control size
+		return Size.y / startSize.y;
 
 	}
 

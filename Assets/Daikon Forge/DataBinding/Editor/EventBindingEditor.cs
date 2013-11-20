@@ -291,20 +291,42 @@ public class EventBindingEditor : Editor
 
 	}
 
-	private bool signatureIsCompatible( ParameterInfo[] lhs, ParameterInfo[] rhs )
+	/// <summary>
+	/// Determines whether the dfEventBinding component class defines a 
+	/// matching "proxy" method to forward event notifications
+	/// </summary>
+	/// <param name="lhs"></param>
+	/// <returns></returns>
+	private bool compatibleProxyMethodFound( ParameterInfo[] lhs )
+	{
+
+		var proxyMethod = typeof( dfEventBinding )
+			.GetMethods( BindingFlags.NonPublic | BindingFlags.Instance )
+			.Where( m =>
+				m.IsDefined( typeof( dfEventProxyAttribute ), true ) &&
+				signatureIsCompatible( lhs, m.GetParameters(), false )
+			)
+			.FirstOrDefault();
+
+		return proxyMethod != null;
+
+	}
+
+	private bool signatureIsCompatible( ParameterInfo[] lhs, ParameterInfo[] rhs, bool allowProxy = true )
 	{
 
 		if( lhs == null || rhs == null )
 			return false;
 
-#if !UNITY_IPHONE
 		// HACK: Allow for "notification handlers" - Event handlers that don't care
 		// about event parameters, they just need to be invoked when the event fires
 		if( lhs.Length > 0 && rhs.Length == 0 )
 		{
-			return true;
+			if( allowProxy )
+				return compatibleProxyMethodFound( lhs );
+			else
+				return false;
 		}
-#endif
 
 		if( lhs.Length != rhs.Length )
 			return false;

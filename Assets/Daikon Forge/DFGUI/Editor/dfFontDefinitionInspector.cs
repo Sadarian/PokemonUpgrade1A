@@ -41,7 +41,10 @@ public class dfFontDefinitionInspector : Editor
 		var saveFolder = Path.GetDirectoryName( AssetDatabase.GetAssetPath( selection ) );
 		var prefabPath = EditorUtility.SaveFilePanel( "Create Font Definition", saveFolder, go.name, "prefab" );
 		if( string.IsNullOrEmpty( prefabPath ) )
+		{
+			DestroyImmediate( go );
 			return;
+		}
 
 		prefabPath = prefabPath.MakeRelativePath();
 
@@ -233,10 +236,6 @@ public class dfFontDefinitionInspector : Editor
 
 		EditSprite( "Font Sprite", font, "Sprite", 95 );
 
-		//GUI.enabled = false;
-		//base.OnInspectorGUI();
-		//GUI.enabled = true;
-
 	}
 
 	protected internal static void EditSprite( string label, dfFont font, string propertyName, int labelWidth = 90 )
@@ -312,11 +311,11 @@ public class dfFontDefinitionInspector : Editor
 
 		var atlas = font.Atlas;
 		var sprite = atlas[ font.Sprite ];
-		var texture = sprite.texture;
-		if( texture == null )
-			return;
 
-		string text = string.Format( "Sprite Size: {0}x{1}", texture.width, texture.height );
+		var width = (int)sprite.sizeInPixels.x;
+		var height = (int)sprite.sizeInPixels.y;
+
+		string text = string.Format( "Sprite Size: {0}x{1}", width, height );
 		EditorGUI.DropShadowLabel( GUILayoutUtility.GetRect( Screen.width, 18f ), text );
 
 	}
@@ -337,16 +336,15 @@ public class dfFontDefinitionInspector : Editor
 	internal static void DrawFontPreview( dfFont font, Rect rect )
 	{
 
-		var atlas = font.Atlas;
-		var sprite = atlas[ font.Sprite ];
-		var texture = sprite.texture;
-		if( texture == null )
-			return;
-
 		var previewString = "0123456789AaBbCcDdEeFfGgHhIiJjKkLlMmNnOoPpQqRrSsTtUuVvWwXxYyZz!@#$%^&*()[]{}\\/| Grumpy wizards make toxic brew for the evil Queen and Jack. The quick brown fox jumps over the lazy dog.";
 
 		var x = 0;
 		var y = 0;
+
+		var atlas = font.Atlas;
+		var texture = getTexture( atlas, font.Sprite );
+		if( texture == null )
+			return;
 
 		var width = 1f / (float)texture.width;
 		var height = 1f / (float)texture.height;
@@ -382,6 +380,16 @@ public class dfFontDefinitionInspector : Editor
 			x += glyph.XAdvance;
 
 		}
+
+	}
+
+	private static Texture2D getTexture( dfAtlas atlas, string sprite )
+	{
+
+		var guid = atlas[ sprite ].textureGUID;
+		var path = AssetDatabase.GUIDToAssetPath( guid );
+		
+		return AssetDatabase.LoadAssetAtPath( path, typeof( Texture2D ) ) as Texture2D;
 
 	}
 

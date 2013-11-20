@@ -48,6 +48,9 @@ public class dfTabstrip : dfControl
 	[SerializeField]
 	protected dfTabContainer pageContainer;
 
+	[SerializeField]
+	protected bool allowKeyboardNavigation = true;
+
 	#endregion
 
 	#region Public properties 
@@ -161,6 +164,16 @@ public class dfTabstrip : dfControl
 				arrangeTabs();
 			}
 		}
+	}
+
+	/// <summary>
+	/// Gets or sets a value indicating whether the arrow keys can be used
+	/// to navigate between tabs
+	/// </summary>
+	public bool AllowKeyboardNavigation
+	{
+		get { return this.allowKeyboardNavigation; }
+		set { this.allowKeyboardNavigation = value; }
 	}
 
 	#endregion
@@ -305,17 +318,22 @@ public class dfTabstrip : dfControl
 		if( args.Used )
 			return;
 
-		if( args.KeyCode == KeyCode.LeftArrow || ( args.KeyCode == KeyCode.Tab && args.Shift ) )
+		if( allowKeyboardNavigation )
 		{
-			SelectedIndex = Mathf.Max( 0, SelectedIndex - 1 );
-			args.Use();
-			return;
-		}
-		else if( args.KeyCode == KeyCode.RightArrow || args.KeyCode == KeyCode.Tab )
-		{
-			SelectedIndex += 1;
-			args.Use();
-			return;
+
+			if( args.KeyCode == KeyCode.LeftArrow || ( args.KeyCode == KeyCode.Tab && args.Shift ) )
+			{
+				SelectedIndex = Mathf.Max( 0, SelectedIndex - 1 );
+				args.Use();
+				return;
+			}
+			else if( args.KeyCode == KeyCode.RightArrow || args.KeyCode == KeyCode.Tab )
+			{
+				SelectedIndex += 1;
+				args.Use();
+				return;
+			}
+
 		}
 
 		base.OnKeyDown( args );
@@ -395,7 +413,7 @@ public class dfTabstrip : dfControl
 			return;
 		}
 
-		renderData.Material = Atlas.material;
+		renderData.Material = Atlas.Material;
 
 		var color = ApplyOpacity( IsEnabled ? this.color : this.disabledColor );
 		var options = new dfSprite.RenderOptions()
