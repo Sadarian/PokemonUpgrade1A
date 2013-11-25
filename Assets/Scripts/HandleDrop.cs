@@ -3,34 +3,39 @@ using System.Collections.Generic;
 
 public class HandleDrop : MonoBehaviour
 {
-	public Dictionary<GameController.Materials, GameObject> prefabs = new Dictionary<GameController.Materials, GameObject>();
-	public dfSprite curSprite;
+	
+	public dfSprite sprite;
 	public GameObject firePrefab;
 	public GameObject earthPrefab;
 	public GameObject airPrefab;
 	public GameObject waterPrefab;
 	public int curChildCount;
 
+	private GameController gameController;
 	void Awake () 
 	{
-		prefabs.Add(GameController.Materials.Fire, firePrefab);
-		prefabs.Add(GameController.Materials.Air, airPrefab);
-		prefabs.Add(GameController.Materials.Earth, earthPrefab);
-		prefabs.Add(GameController.Materials.Water, waterPrefab);
+		
+		sprite = transform.GetChild(0).GetComponent<dfSprite>();
+
+		gameController = GameObject.FindGameObjectWithTag("GameController").GetComponent<GameController>();
 	}
 
 	public void OnDragDrop(dfControl source, dfDragEventArgs args)
 	{
-		Debug.Log("Drop it!");
+		//Debug.Log("Drop it!");
+
 		HandleDrag curHandleDrag = (HandleDrag)args.Data;
-		curSprite = curHandleDrag.sprite;
+		dfSprite curSprite = curHandleDrag.sprite;
 
-		if (curHandleDrag.inSlot)
+		if (!curHandleDrag.draged)return;
+
+		if (sprite.SpriteName != "")
 		{
-			curSprite.transform.parent.gameObject.GetComponent<HandleDrop>().curSprite = null;
+			Debug.Log(sprite.SpriteName);
+			gameController.HandleDrag(gameController.spriteElement[sprite.SpriteName], 1);
 		}
-
-		transform.GetChild(0).GetComponent<dfPanel>().BackgroundSprite = curSprite.SpriteInfo.name;
+		curHandleDrag.inSlot = true;
+		sprite.SpriteName = curSprite.SpriteName;
 
 		args.State = dfDragDropState.Dropped;
 		args.Use();

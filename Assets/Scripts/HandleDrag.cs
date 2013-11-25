@@ -22,6 +22,13 @@ public class HandleDrag : MonoBehaviour
 		sprite = gameObject.GetComponent<dfSprite>();
 	}
 
+	private void Init()
+	{
+		startPosition = gameObject.transform.position;
+		rootPosition = transform.parent.GetComponent<dfControl>().RelativePosition + transform.parent.parent.GetComponent<dfControl>().RelativePosition;
+		init = true;
+	}
+
 	public void OnDragStart(dfControl control, dfDragEventArgs dragEvent)
 	{
 		if (!init) Init() ;
@@ -31,39 +38,32 @@ public class HandleDrag : MonoBehaviour
 		dragEvent.Use();
 
 		draged = true;
-		rootPosition = transform.parent.GetComponent<dfControl>().RelativePosition + transform.parent.parent.GetComponent<dfControl>().RelativePosition;
 
-		if (!inSlot)
+		if (gameController.HandleDrag(material, -1) < 0)
 		{
-			gameController.HandleDrag(control.gameObject, -1);
+			gameController.HandleDrag(material, 1);
+			inSlot = true;
+			draged = false;
 		}
-	}
-
-	private void Init()
-	{
-		startPosition = gameObject.transform.position;
-		init = true;
 	}
 
 	public void OnDragEnd(dfControl control, dfDragEventArgs dragEvent)
 	{
-		if (dragEvent.State == dfDragDropState.Dropped)return;
+		if (dragEvent.State == dfDragDropState.Denied)return;
 		Vector3 curPosition = Input.mousePosition;
 
-		if (draged)
-		{
-			Debug.Log("reset position " + curPosition + " " + startPosition);
-			gameController.HandleDrag(control.gameObject, 1);
-			gameObject.transform.position = startPosition;
+		//Debug.Log("reset to Stack");
+		gameObject.transform.position = startPosition;
+		dragEvent.State = dfDragDropState.Denied;
 
-			dragEvent.State = dfDragDropState.Dropped;
+
+		if (!inSlot)
+		{
+			gameController.HandleDrag(material, 1);
 		}
+
 		draged = false;
-
-		if (inSlot)
-		{
-
-		}
+		inSlot = false;
 	}
 	
 	// Update is called once per frame
