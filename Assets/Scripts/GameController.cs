@@ -20,13 +20,11 @@ public class GameController : MonoBehaviour
 	public int waterComponents;
 	public int greatFireComponents;
 
-	private dfLabel fireCompCounter;
-	private dfLabel airCompCounter;
-	private dfLabel earthCompCounter;
-	private dfLabel waterCompCounter;
-	private dfLabel greatFireCompCounter;
+	public ResourcesGrabbing resourcesGrabber;
+	public GlyphGrabbing glyphGrabber;
 
-	private const int COMPONENTVALVE = 5;
+	private const int COMPONENTVALVE = 20;
+	private bool init = false;
 
 	// Use this for initialization
 	void Awake()
@@ -37,34 +35,40 @@ public class GameController : MonoBehaviour
 		waterComponents = (int)(Random.value * COMPONENTVALVE + 1);
 		greatFireComponents = 0;
 
-		fireCompCounter = gameObject.transform.FindChild("Fire").FindChild("Count").GetComponent<dfLabel>();
-		airCompCounter = gameObject.transform.FindChild("Air").FindChild("Count").GetComponent<dfLabel>(); 
-		earthCompCounter = gameObject.transform.FindChild("Earth").FindChild("Count").GetComponent<dfLabel>();
-		waterCompCounter = gameObject.transform.FindChild("Water").FindChild("Count").GetComponent<dfLabel>();
-		greatFireCompCounter = gameObject.transform.FindChild("GreatFire").FindChild("Count").GetComponent<dfLabel>();
+		resourcesGrabber = GameObject.FindGameObjectWithTag("Resources").GetComponent<ResourcesGrabbing>();
+		glyphGrabber = GameObject.FindGameObjectWithTag("Glyph").GetComponent<GlyphGrabbing>();
 
 		spriteElement.Add("spell-2", Materials.Fire);
 		spriteElement.Add("spell-6", Materials.Air);
 		spriteElement.Add("spell-8", Materials.Earth);
 		spriteElement.Add("spell-9", Materials.Water);
 		spriteElement.Add("spell-11", Materials.GreatFire);
+	}
 
+	private void Init()
+	{
 		ComponentValue();
 	}
 
+	#region Glyphen/Components
+
 	private void ComponentValue()
 	{
-		//Debug.Log("Fire Components: " + fireComponents);
-		//Debug.Log("Earth Components: " + earthComponents);
-		//Debug.Log("Air Components: " + airComponents);
-		//Debug.Log("Water Components: " + waterComponents);
-
-		fireCompCounter.Text = fireComponents.ToString();
-		airCompCounter.Text = airComponents.ToString();
-		earthCompCounter.Text = earthComponents.ToString();
-		waterCompCounter.Text = waterComponents.ToString();
-		greatFireCompCounter.Text = greatFireComponents.ToString();
+		resourcesGrabber.fireCompCounter.Text = fireComponents.ToString();
+		resourcesGrabber.airCompCounter.Text = airComponents.ToString();
+		resourcesGrabber.earthCompCounter.Text = earthComponents.ToString();
+		resourcesGrabber.waterCompCounter.Text = waterComponents.ToString();
+		GlyphenValve();
 	}
+
+	private void GlyphenValve()
+	{
+		resourcesGrabber.greatFireCompCounter.Text = greatFireComponents.ToString();
+		glyphGrabber.greatFireCompCounter.Text = greatFireComponents.ToString();
+	}
+
+	#endregion
+
 
 	public int HandleDrag(Materials dragedRecourse, int count)
 	{
@@ -107,7 +111,8 @@ public class GameController : MonoBehaviour
 	}
 
 	// Update is called once per frame
-	void Update () {
-	
+	void Update ()
+	{
+		if (!init) Init();
 	}
 }
