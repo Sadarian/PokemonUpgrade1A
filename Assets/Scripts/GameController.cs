@@ -5,11 +5,14 @@ public class GameController : MonoBehaviour
 {
 	public enum Materials
 	{
-		Fire,
 		Air,
 		Earth,
+		Fire,
 		Water,
-		GreatFire
+		GreatAir,
+		GreatEarth,
+		GreatFire,
+		GreatWater
 	}
 	public Materials material;
 	public Dictionary<string, Materials> spriteElement = new Dictionary<string, Materials>();
@@ -19,6 +22,9 @@ public class GameController : MonoBehaviour
 	public int earthComponents;
 	public int waterComponents;
 	public int greatFireComponents;
+	public int greatAirComponents;
+	public int greatWaterComponents;
+	public int greatEarthComponents;
 
 	public ResourcesGrabbing resourcesGrabber;
 	public GlyphGrabbing glyphGrabber;
@@ -34,6 +40,9 @@ public class GameController : MonoBehaviour
 		earthComponents = (int)(Random.value * COMPONENTVALVE + 1);
 		waterComponents = (int)(Random.value * COMPONENTVALVE + 1);
 		greatFireComponents = 0;
+		greatAirComponents = 0;
+		greatWaterComponents = 0;
+		greatEarthComponents = 0;
 
 		resourcesGrabber = GameObject.FindGameObjectWithTag("Resources").GetComponent<ResourcesGrabbing>();
 		glyphGrabber = GameObject.FindGameObjectWithTag("Glyph").GetComponent<GlyphGrabbing>();
@@ -42,7 +51,10 @@ public class GameController : MonoBehaviour
 		spriteElement.Add("spell-6", Materials.Air);
 		spriteElement.Add("spell-8", Materials.Earth);
 		spriteElement.Add("spell-9", Materials.Water);
-		spriteElement.Add("spell-11", Materials.GreatFire);
+		spriteElement.Add("spell-fire", Materials.GreatFire);
+		spriteElement.Add("spell-air", Materials.GreatAir);
+		spriteElement.Add("spell-water", Materials.GreatWater);
+		spriteElement.Add("spell-earth", Materials.GreatEarth);
 	}
 
 	private void Init()
@@ -65,6 +77,12 @@ public class GameController : MonoBehaviour
 	{
 		resourcesGrabber.greatFireCompCounter.Text = greatFireComponents.ToString();
 		glyphGrabber.greatFireCompCounter.Text = greatFireComponents.ToString();
+		resourcesGrabber.greatAirCompCounter.Text = greatAirComponents.ToString();
+		glyphGrabber.greatAirCompCounter.Text = greatAirComponents.ToString();
+		resourcesGrabber.greatWaterCompCounter.Text = greatWaterComponents.ToString();
+		glyphGrabber.greatWaterCompCounter.Text = greatWaterComponents.ToString();
+		resourcesGrabber.greatEarthCompCounter.Text = greatEarthComponents.ToString();
+		glyphGrabber.greatEarthCompCounter.Text = greatEarthComponents.ToString();
 	}
 
 	#endregion
@@ -103,6 +121,24 @@ public class GameController : MonoBehaviour
 				{
 					greatFireComponents += count;
 					temp = greatFireComponents;
+					break;
+				}
+			case Materials.GreatAir:
+				{
+					greatAirComponents += count;
+					temp = greatAirComponents;
+					break;
+				}
+			case Materials.GreatWater:
+				{
+					greatWaterComponents += count;
+					temp = greatWaterComponents;
+					break;
+				}
+			case Materials.GreatEarth:
+				{
+					greatEarthComponents += count;
+					temp = greatEarthComponents;
 					break;
 				}
 		}
