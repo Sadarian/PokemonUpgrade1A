@@ -1,0 +1,10 @@
+{
+	Name:"Upgrade Tree",
+	Combinations:{
+		//				  A E F W
+		GreatAir		:[3,0,0,0],
+		GreatEarth		:[0,3,0,0],
+		GreatFire		:[0,0,3,0],
+		GreatWater		:[0,0,0,3],
+	},
+}

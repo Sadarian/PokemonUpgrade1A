@@ -16,6 +16,8 @@ public class GameController : MonoBehaviour
 	}
 	public Materials material;
 	public Dictionary<string, Materials> spriteElement = new Dictionary<string, Materials>();
+
+	public List<Materials> runes = new List<Materials>(); 
 	
 	public int fireComponents;
 	public int airComponents;
@@ -29,7 +31,7 @@ public class GameController : MonoBehaviour
 	public ResourcesGrabbing resourcesGrabber;
 	public GlyphGrabbing glyphGrabber;
 
-	private const int COMPONENTVALVE = 20;
+	private const int COMPONENTVALVE = 50;
 	private bool init = false;
 
 	// Use this for initialization
@@ -39,13 +41,18 @@ public class GameController : MonoBehaviour
 		airComponents = (int)(Random.value * COMPONENTVALVE + 1);
 		earthComponents = (int)(Random.value * COMPONENTVALVE + 1);
 		waterComponents = (int)(Random.value * COMPONENTVALVE + 1);
-		greatFireComponents = 0;
-		greatAirComponents = 0;
-		greatWaterComponents = 0;
-		greatEarthComponents = 0;
+		greatFireComponents = 5;
+		greatAirComponents = 5;
+		greatWaterComponents = 5;
+		greatEarthComponents = 5;
 
 		resourcesGrabber = GameObject.FindGameObjectWithTag("Resources").GetComponent<ResourcesGrabbing>();
 		glyphGrabber = GameObject.FindGameObjectWithTag("Glyph").GetComponent<GlyphGrabbing>();
+
+		runes.Add(Materials.GreatAir);
+		runes.Add(Materials.GreatEarth);
+		runes.Add(Materials.GreatFire);
+		runes.Add(Materials.GreatWater);
 
 		spriteElement.Add("spell-2", Materials.Fire);
 		spriteElement.Add("spell-6", Materials.Air);

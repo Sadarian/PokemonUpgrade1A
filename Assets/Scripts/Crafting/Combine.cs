@@ -8,6 +8,8 @@ public class Combine : MonoBehaviour
 	public Dictionary<Combination, GameController.Materials> optionalCombinations = new Dictionary<Combination, GameController.Materials>();
 	public List<Combination> combinations = new List<Combination>();
 
+	public JSONObject jsonCobinationList;
+
 	private GameController gameController;
 	private Combination curCombination = new Combination(0,0,0,0);
 
@@ -59,20 +61,35 @@ public class Combine : MonoBehaviour
 		}
 	}
 
-	// Use this for initialization
 	void Awake ()
 	{
 		gameController = GameObject.FindGameObjectWithTag("GameController").GetComponent<GameController>();
 
-		combinations.Add(new Combination(3, 0, 0, 0));
-		combinations.Add(new Combination(0, 3, 0, 0));
-		combinations.Add(new Combination(0, 0, 3, 0));
-		combinations.Add(new Combination(0, 0, 0, 3));
+		TextAsset textAsset = (TextAsset)Resources.Load("UpgradeTree", typeof(TextAsset));
+		if (textAsset == null) { Debug.LogError("Missing Resources/UpgradeTree.txt !"); return; };
+		//Debug.Log(textAsset);
+		jsonCobinationList = JSONParser.parse(textAsset.text);
+		//Debug.Log("Waves loaded:" + jsonCobinations["Name"]);
 
-		optionalCombinations.Add(combinations[0], GameController.Materials.GreatAir);
-		optionalCombinations.Add(combinations[1], GameController.Materials.GreatEarth);
-		optionalCombinations.Add(combinations[2], GameController.Materials.GreatFire);
-		optionalCombinations.Add(combinations[3], GameController.Materials.GreatWater);
+		JSONObject jsonComb = jsonCobinationList["Combinations"];
+
+		for (int i = 0; i < gameController.runes.Count; i++ )
+		{
+			combinations.Add(CombinationFromJson(jsonComb, gameController.runes[i]));
+			optionalCombinations.Add(combinations[i], gameController.runes[i]);
+		}
+	}
+
+	private Combination CombinationFromJson(JSONObject jsonComb, GameController.Materials material)
+	{
+		int[] comb = new int[4];
+		JSONObject jList = jsonComb[material.ToString()];
+		for (int i = 0; i < jList.Count; i++)
+		{
+			comb[i] = (int)jList[i];
+		}
+
+		return new Combination(comb);
 	}
 
 	public void OnClick(dfControl control, dfMouseEventArgs mouseEvent)
@@ -141,7 +158,6 @@ public class Combine : MonoBehaviour
 		}
 	}
 
-	// Update is called once per frame
 	void Update () {
 	
 	}
