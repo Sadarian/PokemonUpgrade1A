@@ -7,4 +7,38 @@
 		GreatFire		:[0,0,3,0],
 		GreatWater		:[0,0,0,3],
 	},
+	Runes:{
+		GreatAir:[{
+			Damage		:20,
+			Manacost	: 6,
+			Mana		:10,
+			Life		:40,
+			Defence		:30,
+			Uses		: 5,
+		},],
+		GreatEarth:[{
+			Damage		:10,
+			Manacost	: 4,
+			Mana		:30,
+			Life		:30,
+			Defence		:40,
+			Uses		: 5,
+		},],
+		GreatFire:[{
+			Damage		:40,
+			Manacost	:10,
+			Mana		:20,
+			Life		:20,
+			Defence		:10,
+			Uses		: 5,
+		},],
+		GreatWater:[{
+			Damage		:30,
+			Manacost	: 8,
+			Mana		:40,
+			Life		:10,
+			Defence		:20,
+			Uses		: 5,
+		},],
+	},
 }

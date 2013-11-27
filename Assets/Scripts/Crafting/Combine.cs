@@ -73,10 +73,10 @@ public class Combine : MonoBehaviour
 
 		JSONObject jsonComb = jsonCobinationList["Combinations"];
 
-		for (int i = 0; i < gameController.runes.Count; i++ )
+		for (int i = 0; i < gameController.runeMeterials.Count; i++ )
 		{
-			combinations.Add(CombinationFromJson(jsonComb, gameController.runes[i]));
-			optionalCombinations.Add(combinations[i], gameController.runes[i]);
+			combinations.Add(CombinationFromJson(jsonComb, gameController.runeMeterials[i]));
+			optionalCombinations.Add(combinations[i], gameController.runeMeterials[i]);
 		}
 	}
 
