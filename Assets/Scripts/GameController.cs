@@ -38,6 +38,7 @@ public class GameController : MonoBehaviour
 
 	public int life = 0;
 	public int mana = 0;
+	public int defence = 0;
 
 	private const int BASELIFE = 500;
 	private const int BASEMANA = 125;
@@ -175,14 +176,13 @@ public class GameController : MonoBehaviour
 
 	#endregion
 
-	public int SetLife(int additional = 0)
+	public void SetSats(int additionalLife, int additionalMana, int defence)
 	{
-		return life = BASELIFE + additional;
-	}
-
-	public int SetMana(int additional = 0)
-	{
-		return mana = BASEMANA + additional;
+		life = BASELIFE + additionalLife;
+		mana = BASEMANA + additionalMana;
+		this.defence = defence;
+		GameObject.FindGameObjectWithTag("Combat").GetComponent<Combat>().SetStatsToBars(Combat.BarNames.PlayerLifeBar, life);
+		GameObject.FindGameObjectWithTag("Combat").GetComponent<Combat>().SetStatsToBars(Combat.BarNames.PlayerManaBar, mana);
 	}
 
 	public int HandleDrag(Materials dragedRecourse, int count)

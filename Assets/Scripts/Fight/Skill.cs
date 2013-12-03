@@ -9,7 +9,7 @@ public class Skill : MonoBehaviour {
 
 	private GameController gameController;
 
-	private const float DISTANCE = 45f;
+	private const float DISTANCE = 55f;
 
 	void Awake () {
 		gameController = GameObject.FindGameObjectWithTag("GameController").GetComponent<GameController>();
@@ -20,6 +20,7 @@ public class Skill : MonoBehaviour {
 		for (int i = 0; i < eq.Count; i++)
 		{
 			equipSlots.Add(eq[i]);
+			equipSlots[i].transform.GetChild(0).GetComponent<dfSprite>().Hide();
 		}
 	}
 
@@ -27,6 +28,7 @@ public class Skill : MonoBehaviour {
 	{
 		int curAddlife = 0;
 		int curAddMana = 0;
+		int curdefence = 0;
 
 		for (int i = 0; i < eq.Count; i++)
 		{
@@ -36,10 +38,10 @@ public class Skill : MonoBehaviour {
 				eq[i].gameObject.GetComponent<EquipSlot>().rune = equip[i];
 				curAddlife += equip[i].life;
 				curAddMana += equip[i].mana;
+				curdefence += equip[i].defence;
 			}
 		}
-		gameController.SetLife(curAddlife);
-		gameController.SetMana(curAddMana);
+		gameController.SetSats(curAddlife, curAddMana, curdefence);
 	}
 
 	public void OnMouseMove(dfControl control, dfMouseEventArgs mouseEvent)
@@ -47,17 +49,19 @@ public class Skill : MonoBehaviour {
 		//mouseEvent.Use();
 		for (int i = 0; i < equipSlots.Count; i++)
 		{
+			dfControl curSlot = equipSlots[i].transform.parent.GetComponent<dfControl>();
 			GameController.Rune curRune = equipSlots[i].gameObject.GetComponent<EquipSlot>().rune;
 			if (curRune != null)
 			{
-				Vector2 runeSlotCenter = new Vector2(equipSlots[i].Position.x + equipSlots[i].Size.x / 2, equipSlots[i].Position.y - equipSlots[i].Size.y / 2);
+				Vector2 runeSlotCenter = new Vector2(curSlot.GetGUIScreenPos().x, curSlot.GetGUIScreenPos().y);
 
-				float dist = (mouseEvent.Position - runeSlotCenter).magnitude;
-				Debug.Log("slot " + (i + 1) + runeSlotCenter + " distance " + dist);
+				float dist = (curSlot.GetManager().ScreenToGui(Input.mousePosition) - runeSlotCenter).magnitude;
+				//Debug.Log("slot " + (i + 1) + runeSlotCenter + " distance " + dist);
 
-				if (!activeCombination.Contains(equipSlots[i]) && dist <= DISTANCE)
+				if (activeCombination.Count < 4 && !activeCombination.Contains(equipSlots[i]) && dist <= DISTANCE)
 				{
 					activeCombination.Add(equipSlots[i]);
+					equipSlots[i].transform.GetChild(0).GetComponent<dfSprite>().Show();
 				}
 			}
 		}
@@ -65,21 +69,51 @@ public class Skill : MonoBehaviour {
 
 	public void OnMouseUp(dfControl control, dfMouseEventArgs mouseEvent)
 	{
-		//Debug.Log("Mouse Up!");
+		Debug.Log("Mouse Up!");
 
+		if (activeCombination.Count == 4)
+		{
+			//	GameObject.FindGameObjectWithTag("GameController").GetComponent<Combat>().Attack(activeCombination);
 
-		//if (activeCombination.Count == 4)
-		//{
-		//	GameObject.FindGameObjectWithTag("GameController").GetComponent<Combat>().Attack(activeCombination);
-		//	foreach (dfButton button in activeCombination)
-		//	{
-		//		button.State = dfButton.ButtonState.Default;
-		//	}
-		//	activeCombination.Clear();
-		//}
+			foreach (dfSprite sprite in activeCombination)
+			{
+				sprite.transform.GetChild(0).GetComponent<dfSprite>().Hide();
+			}
+			activeCombination.Clear();
+		}
 	}
 	
 	void Update () {
 	
+	}
+}
+
+public static class dfControlExtension
+{
+	public static Vector3 GetGUIScreenPos(this dfControl self)
+	{
+		dfControl parent = self.Parent;
+		Vector3 pos = self.RelativePosition;
+		while (parent != null)
+		{
+			pos += parent.RelativePosition;
+			parent = parent.Parent;
+		}
+		pos += new Vector3(self.Width / 2, self.Height / 2, 0);
+		return pos;
+	}
+
+	public static void SetGUIScreenPos(this dfControl self, Vector3 pos)
+	{
+		dfControl parent = self.Parent;
+		Vector3 offset = new Vector3();
+		while (parent != null)
+		{
+			offset += parent.RelativePosition;
+			parent = parent.Parent;
+		}
+		pos -= offset;
+		pos -= new Vector3(self.Width / 2, self.Height / 2, 0);
+		self.RelativePosition = pos;
 	}
 }

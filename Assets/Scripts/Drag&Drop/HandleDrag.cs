@@ -50,7 +50,6 @@ public class HandleDrag : MonoBehaviour
 	public void OnDragEnd(dfControl control, dfDragEventArgs dragEvent)
 	{
 		if (dragEvent.State == dfDragDropState.Denied)return;
-		Vector3 curPosition = Input.mousePosition;
 
 		//Debug.Log("reset to Stack");
 		gameObject.transform.position = startPosition;
