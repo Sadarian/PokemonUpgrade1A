@@ -15,10 +15,13 @@ public class GameController : MonoBehaviour
 		GreatWater
 	}
 	public Materials material;
-	public Dictionary<string, Materials> spriteElement = new Dictionary<string, Materials>();
-	public Dictionary<RuneLevel, Rune> runes = new Dictionary<RuneLevel, Rune>();
+
+	public Dictionary<string, Materials> spriteToElement = new Dictionary<string, Materials>();
+	public Dictionary<Materials, string> elementToSprite = new Dictionary<Materials, string>();
+	public Dictionary<Materials, Rune> runes = new Dictionary<Materials, Rune>();
 
 	public List<Materials> runeMeterials = new List<Materials>();
+	
 	public JSONObject jsonRuneList; 
 
 	public int fireComponents;
@@ -33,19 +36,25 @@ public class GameController : MonoBehaviour
 	public ResourcesGrabbing resourcesGrabber;
 	public GlyphGrabbing glyphGrabber;
 
+	public int life = 0;
+	public int mana = 0;
+
+	private const int BASELIFE = 500;
+	private const int BASEMANA = 125;
 	private const int COMPONENTVALVE = 50;
 	private bool init = false;
 
 	public class Rune
 	{
-		int damage = 0;
-		int manaCost = 0;
-		int mana = 0;
-		int life = 0;
-		int defence = 0;
-		int uses = 0;
+		public int level = 0;
+		public int damage = 0;
+		public int manaCost = 0;
+		public int mana = 0;
+		public int life = 0;
+		public int defence = 0;
+		public int uses = 0;
 
-		public Rune(int damage, int manaCost, int mana, int life, int defence, int uses)
+		public Rune(int damage, int manaCost, int mana, int life, int defence, int uses, int level)
 		{
 			this.damage = damage;
 			this.manaCost = manaCost;
@@ -53,27 +62,29 @@ public class GameController : MonoBehaviour
 			this.life = life;
 			this.defence = defence;
 			this.uses = uses;
+			this.level = level;
 		}
-	}
 
-	public struct RuneLevel
-	{
-		Material material;
-		int level;
-
-		public RuneLevel(Material material, int level)
+		public Rune(JSONObject runeValves, int level)
 		{
-			this.material = material;
+			damage = (int)runeValves["Damage"];
+			manaCost = (int)runeValves["Manacost"];
+			mana = (int)runeValves["Mana"];
+			life = (int)runeValves["Life"];
+			defence = (int)runeValves["Defence"];
+			uses = (int)runeValves["Uses"];
 			this.level = level;
 		}
 	}
 
-	void Awake()
+	#region Init
+
+	private void Awake()
 	{
-		fireComponents = (int)(Random.value * COMPONENTVALVE + 1);
-		airComponents = (int)(Random.value * COMPONENTVALVE + 1);
-		earthComponents = (int)(Random.value * COMPONENTVALVE + 1);
-		waterComponents = (int)(Random.value * COMPONENTVALVE + 1);
+		fireComponents = (int) (Random.value*COMPONENTVALVE + 1);
+		airComponents = (int) (Random.value*COMPONENTVALVE + 1);
+		earthComponents = (int) (Random.value*COMPONENTVALVE + 1);
+		waterComponents = (int) (Random.value*COMPONENTVALVE + 1);
 		greatFireComponents = 5;
 		greatAirComponents = 5;
 		greatWaterComponents = 5;
@@ -87,17 +98,31 @@ public class GameController : MonoBehaviour
 		runeMeterials.Add(Materials.GreatFire);
 		runeMeterials.Add(Materials.GreatWater);
 
-		spriteElement.Add("spell-2", Materials.Fire);
-		spriteElement.Add("spell-6", Materials.Air);
-		spriteElement.Add("spell-8", Materials.Earth);
-		spriteElement.Add("spell-9", Materials.Water);
-		spriteElement.Add("spell-fire", Materials.GreatFire);
-		spriteElement.Add("spell-air", Materials.GreatAir);
-		spriteElement.Add("spell-water", Materials.GreatWater);
-		spriteElement.Add("spell-earth", Materials.GreatEarth);
+		spriteToElement.Add("spell-2", Materials.Fire);
+		spriteToElement.Add("spell-6", Materials.Air);
+		spriteToElement.Add("spell-8", Materials.Earth);
+		spriteToElement.Add("spell-9", Materials.Water);
+		spriteToElement.Add("spell-fire", Materials.GreatFire);
+		spriteToElement.Add("spell-air", Materials.GreatAir);
+		spriteToElement.Add("spell-water", Materials.GreatWater);
+		spriteToElement.Add("spell-earth", Materials.GreatEarth);
 
-		TextAsset textAsset = (TextAsset)Resources.Load("UpgradeTree", typeof(TextAsset));
-		if (textAsset == null) { Debug.LogError("Missing Resources/UpgradeTree.txt !"); return; };
+		elementToSprite.Add(Materials.Fire, "spell-2");
+		elementToSprite.Add(Materials.Air, "spell-6");
+		elementToSprite.Add(Materials.Earth, "spell-8");
+		elementToSprite.Add(Materials.Water, "spell-9");
+		elementToSprite.Add(Materials.GreatFire, "spell-fire");
+		elementToSprite.Add(Materials.GreatAir, "spell-air");
+		elementToSprite.Add(Materials.GreatWater, "spell-water");
+		elementToSprite.Add(Materials.GreatEarth, "spell-earth");
+
+		TextAsset textAsset = (TextAsset) Resources.Load("UpgradeTree", typeof (TextAsset));
+		if (textAsset == null)
+		{
+			Debug.LogError("Missing Resources/UpgradeTree.txt !");
+			return;
+		}
+		;
 		//Debug.Log(textAsset);
 		jsonRuneList = JSONParser.parse(textAsset.text);
 		//Debug.Log("Waves loaded:" + jsonCobinations["Name"]);
@@ -113,10 +138,12 @@ public class GameController : MonoBehaviour
 			JSONObject curJsonRune = jsonRunes[runeMeterial.ToString()];
 			for (int i = 0; i < curJsonRune.Count; i++)
 			{
-				
+				runes.Add(runeMeterial, new Rune(curJsonRune[i], i + 1));
 			}
 		}
 	}
+
+	#endregion
 
 	#region Glyphen/Components
 
@@ -148,6 +175,15 @@ public class GameController : MonoBehaviour
 
 	#endregion
 
+	public int SetLife(int additional = 0)
+	{
+		return life = BASELIFE + additional;
+	}
+
+	public int SetMana(int additional = 0)
+	{
+		return mana = BASEMANA + additional;
+	}
 
 	public int HandleDrag(Materials dragedRecourse, int count)
 	{
@@ -207,7 +243,7 @@ public class GameController : MonoBehaviour
 		return temp;
 	}
 
-	// Update is called once per frame
+
 	void Update ()
 	{
 		if (!init) Init();

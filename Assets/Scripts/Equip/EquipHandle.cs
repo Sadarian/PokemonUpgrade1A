@@ -6,10 +6,12 @@ public class EquipHandle : MonoBehaviour {
 	public List<dfSprite> toEquippingSlots = new List<dfSprite>();
 
 	private GameController gameController;
+	private Skill skill;
 
 	void Awake ()
 	{
 		gameController = GameObject.FindGameObjectWithTag("GameController").GetComponent<GameController>();
+		skill = GameObject.FindGameObjectWithTag("Skill").GetComponent<Skill>();
 
 		for (int i = 1; i <= 9; i++ )
 		{
@@ -20,6 +22,7 @@ public class EquipHandle : MonoBehaviour {
 		{
 			toEquippingSlots.Add(GameObject.FindGameObjectWithTag("Skill").transform.FindChild("Skill Slot " + i).GetChild(0).GetComponent<dfSprite>());
 		}
+		skill.Init(toEquippingSlots);
 	}
 
 	public void OnClick(dfControl control, dfMouseEventArgs mouseEvent)
@@ -28,6 +31,7 @@ public class EquipHandle : MonoBehaviour {
 		{
 			toEquippingSlots[i].SpriteName = equipSlots[i].SpriteName;
 		}
+		skill.SetEquip(toEquippingSlots);
 	}
 
 	void Update () {

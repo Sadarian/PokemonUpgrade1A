@@ -3,21 +3,17 @@ using System.Collections.Generic;
 
 public class HandleDrop : MonoBehaviour
 {
-	
 	public dfSprite sprite;
-	public GameObject firePrefab;
-	public GameObject earthPrefab;
-	public GameObject airPrefab;
-	public GameObject waterPrefab;
 	public int curChildCount;
 
 	private GameController gameController;
+	private Combine combine;
 	void Awake () 
 	{
-		
 		sprite = transform.GetChild(0).GetComponent<dfSprite>();
 
 		gameController = GameObject.FindGameObjectWithTag("GameController").GetComponent<GameController>();
+		combine = GameObject.FindGameObjectWithTag("Combine").GetComponent<Combine>();
 	}
 
 	public void OnDragDrop(dfControl source, dfDragEventArgs args)
@@ -32,10 +28,12 @@ public class HandleDrop : MonoBehaviour
 		if (sprite.SpriteName != "")
 		{
 			Debug.Log(sprite.SpriteName);
-			gameController.HandleDrag(gameController.spriteElement[sprite.SpriteName], 1);
+			gameController.HandleDrag(gameController.spriteToElement[sprite.SpriteName], 1);
 		}
 		curHandleDrag.inSlot = true;
 		sprite.SpriteName = curSprite.SpriteName;
+
+		combine.FillSlot();
 
 		args.State = dfDragDropState.Dropped;
 		args.Use();

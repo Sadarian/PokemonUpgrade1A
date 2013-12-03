@@ -8,12 +8,14 @@ public class Combine : MonoBehaviour
 	public Dictionary<Combination, GameController.Materials> optionalCombinations = new Dictionary<Combination, GameController.Materials>();
 	public List<Combination> combinations = new List<Combination>();
 
+	public GameObject endProdukt;
+
 	public JSONObject jsonCobinationList;
 
 	private GameController gameController;
 	private Combination curCombination = new Combination(0,0,0,0);
 
-	private int counter = 0;
+	private bool newCombination = false;
 
 	public class Combination
 	{
@@ -92,16 +94,16 @@ public class Combine : MonoBehaviour
 		return new Combination(comb);
 	}
 
-	public void OnClick(dfControl control, dfMouseEventArgs mouseEvent)
+	public void FillSlot()
 	{
+		curCombination.Clear();
 		foreach (GameObject slot in slots)
 		{
 			dfSprite curSprite = slot.GetComponent<dfSprite>();
 
 			if (curSprite.SpriteName != "")
 			{
-				counter++;
-				switch (gameController.spriteElement[curSprite.SpriteName])
+				switch (gameController.spriteToElement[curSprite.SpriteName])
 				{
 					case GameController.Materials.Air:
 						{
@@ -124,28 +126,15 @@ public class Combine : MonoBehaviour
 							break;
 						}
 				}
+				newCombination = true;
 			}
 		}
-
-		CombineElements();
 	}
 
-	private void CombineElements()
+	public void OnClick(dfControl control, dfMouseEventArgs mouseEvent)
 	{
-		if (counter == 3)
-		{
-			foreach (Combination combination in combinations)
-			{
-				if (combination == curCombination)
-				{
-					gameController.HandleDrag(optionalCombinations[combination], 1);
-					Clear();
-				}
-			}
-		}
-
-		curCombination.Clear();
-		counter = 0;
+		gameController.HandleDrag(gameController.spriteToElement[endProdukt.GetComponent<dfSprite>().SpriteName], 1);
+		Clear();
 	}
 
 	private void Clear()
@@ -156,9 +145,20 @@ public class Combine : MonoBehaviour
 
 			curSprite.SpriteName = "";
 		}
+		endProdukt.GetComponent<dfSprite>().SpriteName = "";
 	}
 
 	void Update () {
-	
+		if (newCombination)
+		{
+			foreach (Combination combination in combinations)
+			{
+				if (combination == curCombination)
+				{
+					endProdukt.GetComponent<dfSprite>().SpriteName = gameController.elementToSprite[optionalCombinations[combination]];
+				}
+			}
+			newCombination = false;
+		}
 	}
 }
