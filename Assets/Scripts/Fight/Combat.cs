@@ -12,29 +12,17 @@ public class Combat : MonoBehaviour
 	}
 
 	public BarNames barName;
-	public GameObject enemyLifeBar;
-	public GameObject enemyManaBar;
-	public GameObject playerLifeBar;
-	public GameObject playerManaBar;
 
 	public GameObject[] bars = new GameObject[4];
 
-	public Enemy enemy = new Enemy();
+	public Enemy enemy;
 
 	private GameController gameController;
 
 	void Awake()
 	{
 		gameController = GameObject.FindGameObjectWithTag("GameController").GetComponent<GameController>();
-		Init();
-	}
-
-	private void Init()
-	{
-		bars[0] = enemyLifeBar;
-		bars[1] = enemyManaBar;
-		bars[2] = playerLifeBar;
-		bars[3] = playerManaBar;
+		enemy = new Enemy(this);
 	}
 
 	public void SetStatsToBars(BarNames bar, float maxValve)

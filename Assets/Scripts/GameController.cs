@@ -129,7 +129,9 @@ public class GameController : MonoBehaviour
 		//Debug.Log("Waves loaded:" + jsonCobinations["Name"]);
 
 		JSONObject jsonRunes = jsonRuneList["Runes"];
+		
 		FillRuneDictonary(jsonRunes);
+		SetSats();
 	}
 
 	private void FillRuneDictonary(JSONObject jsonRunes)
@@ -176,7 +178,7 @@ public class GameController : MonoBehaviour
 
 	#endregion
 
-	public void SetSats(int additionalLife, int additionalMana, int defence)
+	public void SetSats(int additionalLife = 0, int additionalMana = 0, int defence = 0)
 	{
 		life = BASELIFE + additionalLife;
 		mana = BASEMANA + additionalMana;
