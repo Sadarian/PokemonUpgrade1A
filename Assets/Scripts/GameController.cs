@@ -16,6 +16,13 @@ public class GameController : MonoBehaviour
 	}
 	public Materials material;
 
+	public enum Turns
+	{
+		Player,
+		Enemy
+	}
+	public Turns curTurn;
+
 	public Dictionary<string, Materials> spriteToElement = new Dictionary<string, Materials>();
 	public Dictionary<Materials, string> elementToSprite = new Dictionary<Materials, string>();
 	public Dictionary<Materials, Rune> runes = new Dictionary<Materials, Rune>();
@@ -39,9 +46,11 @@ public class GameController : MonoBehaviour
 	public int life = 0;
 	public int mana = 0;
 	public int defence = 0;
+	public float defenceInPercent = 0f;
 
 	private const int BASELIFE = 500;
 	private const int BASEMANA = 125;
+	public const int MAXDEFENCE = 480;
 	private const int COMPONENTVALVE = 50;
 	private bool init = false;
 
@@ -64,6 +73,17 @@ public class GameController : MonoBehaviour
 			this.defence = defence;
 			this.uses = uses;
 			this.level = level;
+		}
+		
+		public Rune(Rune rune)
+		{
+			damage = rune.damage;
+			manaCost = rune.manaCost;
+			mana = rune.mana;
+			life = rune.life;
+			defence = rune.defence;
+			uses = rune.uses;
+			level = rune.level;
 		}
 
 		public Rune(JSONObject runeValves, int level)
@@ -183,6 +203,7 @@ public class GameController : MonoBehaviour
 		life = BASELIFE + additionalLife;
 		mana = BASEMANA + additionalMana;
 		this.defence = defence;
+		defenceInPercent = (float)defence / (float)MAXDEFENCE;
 		GameObject.FindGameObjectWithTag("Combat").GetComponent<Combat>().SetStatsToBars(Combat.BarNames.PlayerLifeBar, life);
 		GameObject.FindGameObjectWithTag("Combat").GetComponent<Combat>().SetStatsToBars(Combat.BarNames.PlayerManaBar, mana);
 	}
@@ -244,7 +265,6 @@ public class GameController : MonoBehaviour
 		ComponentValue();
 		return temp;
 	}
-
 
 	void Update ()
 	{

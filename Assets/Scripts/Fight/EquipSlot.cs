@@ -4,16 +4,16 @@ using System.Collections;
 public class EquipSlot : MonoBehaviour
 {
 	public GameController.Rune rune;
-	//public int runeEquiped;
+	public int uses = 0;
 
 	void Awake () {
 	
 	}
 	
 	void Update () {
-		//if (rune != null)
-		//{
-		//	runeEquiped = rune.damage;
-		//}
+		if (rune != null)
+		{
+			uses = rune.uses;
+		}
 	}
 }

@@ -5,7 +5,7 @@ public class Skill : MonoBehaviour {
 
 	public List<dfSprite> equipSlots = new List<dfSprite>();
 	public GameController.Rune[] equip = new GameController.Rune[9];
-	public List<dfSprite> activeCombination = new List<dfSprite>();
+	public List<GameController.Rune> activeCombination = new List<GameController.Rune>();
 
 	private GameController gameController;
 
@@ -28,25 +28,27 @@ public class Skill : MonoBehaviour {
 	{
 		int curAddlife = 0;
 		int curAddMana = 0;
-		int curdefence = 0;
+		int curDefence = 0;
 
 		for (int i = 0; i < eq.Count; i++)
 		{
 			if (eq[i].SpriteName != "")
 			{
-				equip[i] = gameController.runes[gameController.spriteToElement[eq[i].SpriteName]];
+				equip[i] = new GameController.Rune(gameController.runes[gameController.spriteToElement[eq[i].SpriteName]]);
 				eq[i].gameObject.GetComponent<EquipSlot>().rune = equip[i];
 				curAddlife += equip[i].life;
 				curAddMana += equip[i].mana;
-				curdefence += equip[i].defence;
+				curDefence += equip[i].defence;
+				if(!equipSlots[i].IsEnabled) equipSlots[i].Enable();
 			}
 		}
-		gameController.SetSats(curAddlife, curAddMana, curdefence);
+		gameController.SetSats(curAddlife, curAddMana, curDefence);
 	}
 
 	public void OnMouseMove(dfControl control, dfMouseEventArgs mouseEvent)
 	{
-		//mouseEvent.Use();
+		if (activeCombination.Count == 4 || gameController.curTurn == GameController.Turns.Enemy)return;
+
 		for (int i = 0; i < equipSlots.Count; i++)
 		{
 			dfControl curSlot = equipSlots[i].transform.parent.GetComponent<dfControl>();
@@ -58,9 +60,9 @@ public class Skill : MonoBehaviour {
 				float dist = (curSlot.GetManager().ScreenToGui(Input.mousePosition) - runeSlotCenter).magnitude;
 				//Debug.Log("slot " + (i + 1) + runeSlotCenter + " distance " + dist);
 
-				if (activeCombination.Count < 4 && !activeCombination.Contains(equipSlots[i]) && dist <= DISTANCE)
+				if (!activeCombination.Contains(equip[i]) && equip[i].uses > 0 && dist <= DISTANCE)
 				{
-					activeCombination.Add(equipSlots[i]);
+					activeCombination.Add(equip[i]);
 					equipSlots[i].transform.GetChild(0).GetComponent<dfSprite>().Show();
 				}
 			}
@@ -69,15 +71,18 @@ public class Skill : MonoBehaviour {
 
 	public void OnMouseUp(dfControl control, dfMouseEventArgs mouseEvent)
 	{
-		Debug.Log("Mouse Up!");
-
-		if (activeCombination.Count == 4)
+		if (activeCombination.Count > 1)
 		{
-			//	GameObject.FindGameObjectWithTag("GameController").GetComponent<Combat>().Attack(activeCombination);
+			GameObject.FindGameObjectWithTag("Combat").GetComponent<Combat>().DoAttack(activeCombination, Combat.BarNames.EnemyLifeBar);
 
-			foreach (dfSprite sprite in activeCombination)
+			for (int i = 0; i < equipSlots.Count; i++)
 			{
-				sprite.transform.GetChild(0).GetComponent<dfSprite>().Hide();
+				equipSlots[i].transform.GetChild(0).GetComponent<dfSprite>().Hide();
+
+				if (equip[i] != null && equip[i].uses == 0)
+				{
+					equipSlots[i].Disable();	
+				}
 			}
 			activeCombination.Clear();
 		}
