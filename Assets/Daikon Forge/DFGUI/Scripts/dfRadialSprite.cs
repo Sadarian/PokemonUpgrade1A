@@ -223,16 +223,6 @@ public class dfRadialSprite : dfSprite
 
 	}
 
-	private void removeTriangles( List<Vector3> verts, List<int> triangles, params int[] remove )
-	{
-		for( int i = remove.Length; i >= 0; i-- )
-		{
-			var index = remove[ i ];
-			verts.RemoveAt( index );
-			triangles.RemoveRange( index * 3, 3 );
-		}
-	}
-
 	private List<int> buildTriangles( List<Vector3> verts )
 	{
 

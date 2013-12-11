@@ -1,6 +1,7 @@
 ﻿using UnityEngine;
 using System.Collections;
 
+[AddComponentMenu( "Daikon Forge/Examples/Touch/Touch Throw" )]
 public class TouchThrow : MonoBehaviour
 {
 

@@ -1,6 +1,7 @@
 using UnityEngine;
 using System.Collections;
 
+[AddComponentMenu( "Daikon Forge/Examples/Game Menu/Show Selected Texture" )]
 public class DemoShowSelectedTexture : MonoBehaviour
 {
 

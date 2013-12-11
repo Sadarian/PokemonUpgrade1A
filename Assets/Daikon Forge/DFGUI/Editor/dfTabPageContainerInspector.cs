@@ -30,10 +30,9 @@ public class dfTabPageContainerInspector : dfControlInspector
 
 		var control = target as dfTabContainer;
 
-		EditorGUIUtility.LookLikeControls( 110f );
-		EditorGUI.indentLevel += 1;
+		dfEditorUtil.LabelWidth = 110f;
 
-		GUILayout.Label( "Appearance", "HeaderLabel" );
+		using( dfEditorUtil.BeginGroup( "Appearance" ) )
 		{
 
 			SelectTextureAtlas( "Atlas", control, "Atlas", false, false );
@@ -46,7 +45,7 @@ public class dfTabPageContainerInspector : dfControlInspector
 
 		}
 
-		GUILayout.Label( "Tab Pages", "HeaderLabel" );
+		using( dfEditorUtil.BeginGroup( "Tab Pages" ) )
 		{
 
 			var tabCount = control.Controls.Count;
@@ -65,10 +64,10 @@ public class dfTabPageContainerInspector : dfControlInspector
 
 		}
 
-		GUILayout.Label( "Layout", "HeaderLabel" );
+		using( dfEditorUtil.BeginGroup( "Layout" ) )
 		{
 
-			var flowPadding = EditPadding( "Padding", control.Padding );
+			var flowPadding = dfEditorUtil.EditPadding( "Padding", control.Padding );
 			if( !RectOffset.Equals( flowPadding, control.Padding ) )
 			{
 				dfEditorUtil.MarkUndo( control, "Change Padding" );

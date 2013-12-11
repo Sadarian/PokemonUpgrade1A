@@ -3,6 +3,7 @@
 /// <summary>
 /// Defines the method signature used for TweenPlayableBase notifications
 /// </summary>
+[dfEventCategory( "Animation Events" )]
 public delegate void TweenNotification();
 
 /// <summary>

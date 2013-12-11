@@ -148,10 +148,9 @@ public class dfDynamicFontInspector : Editor
 
 		var resetDefaults = false;
 
-		EditorGUIUtility.LookLikeControls( 120f );
-		EditorGUI.indentLevel += 1;
+		dfEditorUtil.LabelWidth = 120f;
 
-		GUILayout.Label( "Base Font", "HeaderLabel" );
+		using( dfEditorUtil.BeginGroup( "Base Font" ) )
 		{
 
 			var baseFont = EditorGUILayout.ObjectField( "Base Font", font.BaseFont, typeof( UnityFont ), false ) as UnityFont;
@@ -171,7 +170,7 @@ public class dfDynamicFontInspector : Editor
 
 		}
 
-		GUILayout.Label( "Defaults", "HeaderLabel" );
+		using( dfEditorUtil.BeginGroup( "Defaults" ) )
 		{
 
 			var warningMessage = "Please note: The following values must match the corresponding values defined in the base font in order to render correctly, and should not be changed unless absolutely necessary.";
@@ -241,8 +240,6 @@ public class dfDynamicFontInspector : Editor
 			EditorGUILayout.EndHorizontal();
 
 		}
-
-		EditorGUI.indentLevel -= 1;
 
 	}
 

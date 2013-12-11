@@ -18,10 +18,9 @@ public class KeyBindingEditor : Editor
 
 		var binder = target as dfControlKeyBinding;
 
-		EditorGUIUtility.LookLikeControls( 100f );
-		EditorGUI.indentLevel += 1;
+		dfEditorUtil.LabelWidth = 100f;
 
-		GUILayout.Label( "Event Source", "HeaderLabel" );
+		using( dfEditorUtil.BeginGroup( "Event Source" ) )
 		{
 
 			var defaultControl = binder.gameObject.GetComponent<dfControl>();
@@ -35,7 +34,7 @@ public class KeyBindingEditor : Editor
 
 		}
 
-		GUILayout.Label( "Key", "HeaderLabel" );
+		using( dfEditorUtil.BeginGroup( "Key" ) )
 		{
 
 			EditorGUI.BeginChangeCheck();
@@ -92,7 +91,7 @@ public class KeyBindingEditor : Editor
 
 		}
 
-		GUILayout.Label( "Event Handler", "HeaderLabel" );
+		using( dfEditorUtil.BeginGroup( "Event Handler" ) )
 		{
 
 			var dataTarget = binder.Target;

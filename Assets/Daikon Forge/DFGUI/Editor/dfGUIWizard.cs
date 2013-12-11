@@ -12,7 +12,9 @@ public class dfGUIWizard : EditorWindow
 	[MenuItem( "GameObject/Daikon Forge/UI Wizard", false, 0 )]
 	static void ShowGUIWizard()
 	{
-		GetWindow<dfGUIWizard>().LoadPrefs();
+		var window = GetWindow<dfGUIWizard>();
+		window.title = "GUI Wizard";
+		window.LoadPrefs();
 	}
 
 	#endregion
@@ -35,18 +37,24 @@ public class dfGUIWizard : EditorWindow
 	private void OnGUI()
 	{
 
-		EditorGUI.indentLevel += 1;
-
-		GUILayout.Label( "GUI Manager settings", "HeaderLabel" );
+		using( dfEditorUtil.BeginGroup( "GUI Manager settings" ) )
 		{
+
 			layer = EditorGUILayout.LayerField( "UI Layer", layer );
+			if( layer > 30 )
+			{
+				EditorGUILayout.HelpBox( "Daikon Forge GUI will not work correctly on the selected layer. Please choose another layer.", MessageType.Warning );
+				return;
+			}
+
 			orthographic = EditorGUILayout.Toggle( "Orthographic", orthographic );
 			pixelPerfect = EditorGUILayout.Toggle( "Pixel Perfect", pixelPerfect );
+
 		}
 
 		EditorGUILayout.Separator();
 
-		GUILayout.Label( "GUI Input Manager settings", "HeaderLabel" );
+		using( dfEditorUtil.BeginGroup( "GUI Input Manager settings" ) )
 		{
 			useJoystick = EditorGUILayout.Toggle( "Use Joystick", useJoystick );
 			joystickClickButton = (KeyCode)EditorGUILayout.EnumPopup( "Joystick Click Button", joystickClickButton );
@@ -72,8 +80,6 @@ public class dfGUIWizard : EditorWindow
 
 		}
 		EditorGUILayout.EndHorizontal();
-
-		EditorGUI.indentLevel -= 1;
 
 	}
 
@@ -164,15 +170,20 @@ public class dfGUIWizard : EditorWindow
 		guiManager.RenderCamera.aspect = (float)PlayerSettings.defaultScreenWidth / (float)PlayerSettings.defaultScreenHeight;
 #endif
 
-		Selection.activeObject = guiManager;
-
-		var scene = SceneView.currentDrawingSceneView ?? SceneView.lastActiveSceneView;
-		if( scene != null )
+		dfEditorUtil.DelayedInvoke( () =>
 		{
-			scene.orthographic = true;
-			scene.pivot = guiManager.transform.position;
-			scene.AlignViewToObject( guiManager.transform );
-		}
+
+			Selection.activeObject = guiManager;
+
+			var scene = SceneView.currentDrawingSceneView ?? SceneView.lastActiveSceneView;
+			if( scene != null )
+			{
+				scene.orthographic = true;
+				scene.pivot = guiManager.transform.position;
+				scene.AlignViewToObject( guiManager.transform );
+			}
+
+		} );
 
 		this.Close();
 

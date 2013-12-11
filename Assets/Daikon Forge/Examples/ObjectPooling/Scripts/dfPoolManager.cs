@@ -7,6 +7,7 @@ using System.Reflection;
 using System.Collections;
 using System.Collections.Generic;
 
+[AddComponentMenu( "Daikon Forge/Examples/Object Pooling/Object Pool Manager" )]
 [Serializable]
 public class dfPoolManager : MonoBehaviour
 {

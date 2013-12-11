@@ -27,10 +27,9 @@ public class dfProgressbarInspector : dfControlInspector
 		if( !isFoldoutExpanded( foldouts, "Progressbar Properties", true ) )
 			return false;
 
-		EditorGUIUtility.LookLikeControls( 100f );
-		EditorGUI.indentLevel += 1;
+		dfEditorUtil.LabelWidth = 120f;
 
-		GUILayout.Label( "Appearance", "HeaderLabel" );
+		using( dfEditorUtil.BeginGroup( "Appearance" ) )
 		{
 
 			SelectTextureAtlas( "Atlas", control, "Atlas", false, true );
@@ -40,7 +39,20 @@ public class dfProgressbarInspector : dfControlInspector
 			}
 
 			SelectSprite( "Background", control.Atlas, control, "BackgroundSprite" );
+			var backColor = EditorGUILayout.ColorField( "Back Color", control.Color );
+			if( backColor != control.Color )
+			{
+				dfEditorUtil.MarkUndo( control, "Change background color" );
+				control.Color = backColor;
+			}
+
 			SelectSprite( "Progress", control.Atlas, control, "ProgressSprite" );
+			var progressColor = EditorGUILayout.ColorField( "Progress Color", control.ProgressColor );
+			if( progressColor != control.ProgressColor )
+			{
+				dfEditorUtil.MarkUndo( control, "Change background color" );
+				control.ProgressColor = progressColor;
+			}
 
 			var mode = (dfProgressFillMode)EditorGUILayout.EnumPopup( "Fill Mode", control.FillMode );
 			if( mode != control.FillMode )
@@ -49,7 +61,7 @@ public class dfProgressbarInspector : dfControlInspector
 				control.FillMode = mode;
 			}
 
-			var padding = EditPadding( "Padding", control.Padding );
+			var padding = dfEditorUtil.EditPadding( "Padding", control.Padding );
 			if( !RectOffset.Equals( padding, control.Padding ) )
 			{
 				dfEditorUtil.MarkUndo( control, "Modify Padding" );
@@ -58,7 +70,7 @@ public class dfProgressbarInspector : dfControlInspector
 
 		}
 
-		GUILayout.Label( "Behavior", "HeaderLabel" );
+		using( dfEditorUtil.BeginGroup( "Behavior" ) )
 		{
 
 			var actAsSlider = EditorGUILayout.Toggle( "Act as Slider", control.ActAsSlider );
@@ -70,7 +82,7 @@ public class dfProgressbarInspector : dfControlInspector
 
 		}
 
-		GUILayout.Label( "Data", "HeaderLabel" );
+		using( dfEditorUtil.BeginGroup( "Data" ) )
 		{
 
 			var min = EditorGUILayout.FloatField( "Min Value", control.MinValue );

@@ -103,9 +103,9 @@ public abstract class dfMarkupElement
 
 	public void PerformLayout( dfMarkupBox container, dfMarkupStyle style )
 	{
-		Profiler.BeginSample( "Perform markup layout: " + this.GetType().Name );
+		//@Profiler.BeginSample( "Perform markup layout: " + this.GetType().Name );
 		_PerformLayoutImpl( container, style );
-		Profiler.EndSample();
+		//@Profiler.EndSample();
 	}
 
 	internal virtual void Release()
@@ -175,7 +175,7 @@ public class dfMarkupString : dfMarkupElement
 	internal dfMarkupElement SplitWords()
 	{
 
-		Profiler.BeginSample( "dfMarkupString.SplitWords()" );
+		//@Profiler.BeginSample( "dfMarkupString.SplitWords()" );
 
 		var tag = dfMarkupTagSpan.Obtain();
 
@@ -228,7 +228,7 @@ public class dfMarkupString : dfMarkupElement
 
 		}
 
-		Profiler.EndSample();
+		//@Profiler.EndSample();
 
 		return tag;
 

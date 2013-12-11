@@ -15,7 +15,7 @@ using System.Collections.Generic;
 [ExecuteInEditMode]
 [RequireComponent( typeof( BoxCollider ) )]
 [AddComponentMenu( "Daikon Forge/User Interface/Listbox" )]
-public class dfListbox : dfInteractiveBase
+public class dfListbox : dfInteractiveBase, IDFMultiRender
 {
 
 	#region Public events
@@ -36,7 +36,7 @@ public class dfListbox : dfInteractiveBase
 	#region Serialized protected members
 
 	[SerializeField]
-	protected dfFont font;
+	protected dfFontBase font;
 
 	[SerializeField]
 	protected RectOffset listPadding = new RectOffset();
@@ -75,6 +75,9 @@ public class dfListbox : dfInteractiveBase
 	protected bool shadow = false;
 
 	[SerializeField]
+	protected dfTextScaleMode textScaleMode = dfTextScaleMode.None;
+
+	[SerializeField]
 	protected Color32 shadowColor = UnityEngine.Color.black;
 
 	[SerializeField]
@@ -92,6 +95,7 @@ public class dfListbox : dfInteractiveBase
 	private int hoverIndex = -1;
 	private float hoverTweenLocation = 0f;
 	private Vector2 touchStartPosition = Vector2.zero;
+	private Vector2 startSize = Vector2.zero;
 
 	#endregion
 
@@ -101,7 +105,7 @@ public class dfListbox : dfInteractiveBase
 	/// Gets or sets the <see cref="dfFont"/> instance that will be used 
 	/// to render list items
 	/// </summary>
-	public dfFont Font
+	public dfFontBase Font
 	{
 		get
 		{
@@ -188,6 +192,43 @@ public class dfListbox : dfInteractiveBase
 			{
 				this.itemHover = value;
 				Invalidate();
+			}
+		}
+	}
+
+	/// <summary>
+	/// Returns the actual text of the currently selected item. Returns
+	/// NULL if no item is currently selected.
+	/// </summary>
+	public string SelectedItem
+	{
+		get
+		{
+
+			if( selectedIndex == -1 )
+				return null;
+
+			return items[ selectedIndex ];
+
+		}
+	}
+
+	/// <summary>
+	/// Gets or sets the value of the currently selected list item
+	/// </summary>
+	public string SelectedValue
+	{
+		get { return this.items[ this.selectedIndex ]; }
+		set
+		{
+			this.selectedIndex = -1;
+			for( int i = 0; i < this.items.Length; i++ )
+			{
+				if( items[ i ] == value )
+				{
+					this.selectedIndex = i;
+					break;
+				}
 			}
 		}
 	}
@@ -414,9 +455,25 @@ public class dfListbox : dfInteractiveBase
 		set { this.animateHover = value; }
 	}
 
+	/// <summary>
+	/// Gets or sets whether the TextScale property will be automatically 
+	/// adjusted to match runtime screen resolution
+	/// </summary>
+	public dfTextScaleMode TextScaleMode
+	{
+		get { return this.textScaleMode; }
+		set { this.textScaleMode = value; Invalidate(); }
+	}
+
 	#endregion
 
 	#region Event handlers
+
+	public override void Awake()
+	{
+		base.Awake();
+		startSize = this.Size;
+	}
 
 	public override void Update()
 	{
@@ -444,27 +501,27 @@ public class dfListbox : dfInteractiveBase
 
 	}
 
-	protected override void OnRebuildRenderData()
-	{
+	//protected override void OnRebuildRenderData()
+	//{
 
-		if( Atlas == null || Font == null )
-			return;
+	//    if( Atlas == null || Font == null )
+	//        return;
 
-		renderData.Material = Atlas.Material;
+	//    renderData.Material = Atlas.Material;
 
-		renderBackground();
+	//    renderBackground();
 
-		// We want to start clipping *after* the background is rendered, so 
-		// grab the current number of vertices before rendering other elements
-		var clipStart = renderData.Vertices.Count;
+	//    // We want to start clipping *after* the background is rendered, so 
+	//    // grab the current number of vertices before rendering other elements
+	//    var clipStart = renderData.Vertices.Count;
 
-		renderHover();
-		renderSelection();
-		renderItems();
+	//    renderHover();
+	//    renderSelection();
+	//    renderItems();
 
-		clipQuads( clipStart );
+	//    clipQuads( clipStart );
 
-	}
+	//}
 
 	public override void LateUpdate()
 	{
@@ -791,7 +848,24 @@ public class dfListbox : dfInteractiveBase
 
 	}
 
-	private void renderItems()
+	private float getTextScaleMultiplier()
+	{
+
+		if( textScaleMode == dfTextScaleMode.None || !Application.isPlaying )
+			return 1f;
+
+		// Return the difference between design resolution and current resolution
+		if( textScaleMode == dfTextScaleMode.ScreenResolution )
+		{
+			return (float)Screen.height / (float)manager.FixedHeight;
+		}
+
+		// Return scale based on control size
+		return Size.y / startSize.y;
+
+	}
+
+	private void renderItems( dfRenderData buffer )
 	{
 
 		if( font == null || items == null || items.Length == 0 )
@@ -811,32 +885,41 @@ public class dfListbox : dfInteractiveBase
 
 		var renderColor = IsEnabled ? ItemTextColor : DisabledColor;
 
-		using( var textRenderer = font.ObtainRenderer() )
+		// TODO: Figure out why the text renderer cannot be re-used for each list item
+
+		var top = pivotOffset.y * p2u;
+		var bottom = top - size.y * p2u;
+		for( int i = 0; i < items.Length; i++ )
 		{
 
-			textRenderer.WordWrap = false;
-			textRenderer.MaxSize = maxSize;
-			textRenderer.PixelRatio = p2u;
-			textRenderer.TextScale = ItemTextScale;
-			textRenderer.VectorOffset = origin;
-			textRenderer.MultiLine = false;
-			textRenderer.TextAlign = this.ItemAlignment;
-			textRenderer.ProcessMarkup = true;
-			textRenderer.DefaultColor = renderColor;
-			textRenderer.OverrideMarkupColors = false;
-			textRenderer.Opacity = this.CalculateOpacity();
-			textRenderer.Shadow = this.Shadow;
-			textRenderer.ShadowColor = this.ShadowColor;
-			textRenderer.ShadowOffset = this.ShadowOffset;
-
-			var top = pivotOffset.y * p2u;
-			var bottom = top - size.y * p2u;
-			for( int i = 0; i < items.Length; i++ )
+			using( var textRenderer = font.ObtainRenderer() )
 			{
+
+				textRenderer.WordWrap = false;
+				textRenderer.MaxSize = maxSize;
+				textRenderer.PixelRatio = p2u;
+				textRenderer.TextScale = ItemTextScale * getTextScaleMultiplier();
+				textRenderer.VectorOffset = origin;
+				textRenderer.MultiLine = false;
+				textRenderer.TextAlign = this.ItemAlignment;
+				textRenderer.ProcessMarkup = true;
+				textRenderer.DefaultColor = renderColor;
+				textRenderer.OverrideMarkupColors = false;
+				textRenderer.Opacity = this.CalculateOpacity();
+				textRenderer.Shadow = this.Shadow;
+				textRenderer.ShadowColor = this.ShadowColor;
+				textRenderer.ShadowOffset = this.ShadowOffset;
+
+				var dynamicFontRenderer = textRenderer as dfDynamicFont.DynamicFontRenderer;
+				if( dynamicFontRenderer != null )
+				{
+					dynamicFontRenderer.SpriteAtlas = this.Atlas;
+					dynamicFontRenderer.SpriteBuffer = renderData;
+				}
 
 				if( origin.y - itemHeight * p2u <= top )
 				{
-					textRenderer.Render( items[ i ], renderData );
+					textRenderer.Render( items[ i ], buffer );
 				}
 
 				origin.y -= itemHeight * p2u;
@@ -851,18 +934,18 @@ public class dfListbox : dfInteractiveBase
 
 	}
 
-	private void clipQuads( int startIndex )
+	private void clipQuads( dfRenderData buffer, int startIndex )
 	{
 
 		// Performs a simplified version of triangle clipping, "clipping" vertices
 		// to the vertical limits of the target render area. Simplified clipping 
-		// does not split triangles, it simply moves them to the corresponding 
+		// does not split triangles, it simply moves vertices to the corresponding 
 		// edge of the clip area and adjusts the UV coordinates to match, which 
 		// means that it is faster than regular triangle clipping and does not
 		// allocate any additional memory.
 
-		var verts = renderData.Vertices;
-		var uv = renderData.UV;
+		var verts = buffer.Vertices;
+		var uv = buffer.UV;
 
 		var p2u = PixelsToUnits();
 		var maxY = ( Pivot.TransformToUpperLeft( Size ).y - listPadding.top ) * p2u;
@@ -1021,6 +1104,93 @@ public class dfListbox : dfInteractiveBase
 		scrollbar.MaxValue = totalItemHeight;
 		scrollbar.ScrollSize = clientHeight;
 		scrollbar.Value = scrollPosition;
+
+	}
+
+	#endregion
+
+	#region IDFMultiRender Members
+
+	private dfRenderData textRenderData = null;
+	private dfList<dfRenderData> buffers = dfList<dfRenderData>.Obtain();
+
+	public dfList<dfRenderData> RenderMultiple()
+	{
+
+		if( Atlas == null || Font == null )
+			return null;
+
+		if( !isVisible )
+		{
+			return null;
+		}
+
+		// Initialize render buffers if needed
+		if( renderData == null )
+		{
+
+			renderData = dfRenderData.Obtain();
+			textRenderData = dfRenderData.Obtain();
+
+			isControlInvalidated = true;
+
+		}
+
+		// If control is not dirty, update the transforms on the 
+		// render buffers (in case control moved) and return 
+		// pre-rendered data
+		if( !isControlInvalidated )
+		{
+			for( int i = 0; i < buffers.Count; i++ )
+			{
+				buffers[ i ].Transform = transform.localToWorldMatrix;
+			}
+			return buffers;
+		}
+
+		#region Prepare render buffers
+
+		buffers.Clear();
+
+		renderData.Clear();
+		renderData.Material = Atlas.Material;
+		renderData.Transform = this.transform.localToWorldMatrix;
+		buffers.Add( renderData );
+
+		textRenderData.Clear();
+		textRenderData.Material = Atlas.Material;
+		textRenderData.Transform = this.transform.localToWorldMatrix;
+		buffers.Add( textRenderData );
+
+		#endregion
+
+		// Render background before anything else, since we're going to 
+		// want to keep track of where the background data ends and any
+		// other data begins
+		renderBackground();
+
+		// We want to start clipping *after* the background is rendered, so 
+		// grab the current number of vertices before rendering other elements
+		var spriteClipStart = renderData.Vertices.Count;
+
+		// Render other sprites
+		renderHover();
+		renderSelection();
+
+		// Render text items
+		renderItems( textRenderData );
+
+		// Perform clipping
+		clipQuads( renderData, spriteClipStart );
+		clipQuads( textRenderData, 0 );
+
+		// Control is no longer in need of rendering
+		isControlInvalidated = false;
+
+		// Make sure that the collider size always matches the control
+		updateCollider();
+
+		return buffers;
 
 	}
 

@@ -18,10 +18,9 @@ public class EventBindingEditor : Editor
 
 		var binder = target as dfEventBinding;
 
-		EditorGUIUtility.LookLikeControls( 100f );
-		EditorGUI.indentLevel += 1;
+		dfEditorUtil.LabelWidth = 100f;
 
-		GUILayout.Label( "Data Source", "HeaderLabel" );
+		using( dfEditorUtil.BeginGroup( "Data Source" ) )
 		{
 
 			if( binder.DataSource == null )
@@ -99,7 +98,7 @@ public class EventBindingEditor : Editor
 			return;
 		}
 
-		GUILayout.Label( "Event Handler", "HeaderLabel" );
+		using( dfEditorUtil.BeginGroup( "Event Handler" ) )
 		{
 
 			var dataTarget = binder.DataTarget;

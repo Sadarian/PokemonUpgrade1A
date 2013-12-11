@@ -24,7 +24,7 @@ public class GameController : MonoBehaviour
 	public Turns curTurn;
 
 	public Dictionary<string, Materials> spriteToElement = new Dictionary<string, Materials>();
-	public Dictionary<Materials, string> elementToSprite = new Dictionary<Materials, string>();
+	public Dictionary<Materials, List<string>> elementToSprite = new Dictionary<Materials, List<string>>();
 	public Dictionary<Materials, Rune> runes = new Dictionary<Materials, Rune>();
 
 	public List<Materials> runeMeterials = new List<Materials>();
@@ -56,6 +56,7 @@ public class GameController : MonoBehaviour
 
 	public class Rune
 	{
+		public Materials material;
 		public int level = 0;
 		public int damage = 0;
 		public int manaCost = 0;
@@ -64,7 +65,7 @@ public class GameController : MonoBehaviour
 		public int defence = 0;
 		public int uses = 0;
 
-		public Rune(int damage, int manaCost, int mana, int life, int defence, int uses, int level)
+		public Rune(int damage, int manaCost, int mana, int life, int defence, int uses, int level, Materials material)
 		{
 			this.damage = damage;
 			this.manaCost = manaCost;
@@ -73,6 +74,7 @@ public class GameController : MonoBehaviour
 			this.defence = defence;
 			this.uses = uses;
 			this.level = level;
+			this.material = material;
 		}
 		
 		public Rune(Rune rune)
@@ -84,9 +86,10 @@ public class GameController : MonoBehaviour
 			defence = rune.defence;
 			uses = rune.uses;
 			level = rune.level;
+			material = rune.material;
 		}
 
-		public Rune(JSONObject runeValves, int level)
+		public Rune(JSONObject runeValves, int level, Materials material)
 		{
 			damage = (int)runeValves["Damage"];
 			manaCost = (int)runeValves["Manacost"];
@@ -95,6 +98,7 @@ public class GameController : MonoBehaviour
 			defence = (int)runeValves["Defence"];
 			uses = (int)runeValves["Uses"];
 			this.level = level;
+			this.material = material;
 		}
 	}
 
@@ -136,6 +140,18 @@ public class GameController : MonoBehaviour
 		elementToSprite.Add(Materials.GreatAir, "spell-air");
 		elementToSprite.Add(Materials.GreatWater, "spell-water");
 		elementToSprite.Add(Materials.GreatEarth, "spell-earth");
+		elementToSprite.Add(Materials.GreatFire, "spell-fire 1");
+		elementToSprite.Add(Materials.GreatAir, "spell-air 1");
+		elementToSprite.Add(Materials.GreatWater, "spell-water 1");
+		elementToSprite.Add(Materials.GreatEarth, "spell-earth 1");
+		elementToSprite.Add(Materials.GreatFire, "spell-fire 2");
+		elementToSprite.Add(Materials.GreatAir, "spell-air 2");
+		elementToSprite.Add(Materials.GreatWater, "spell-water 2");
+		elementToSprite.Add(Materials.GreatEarth, "spell-earth 2");
+		elementToSprite.Add(Materials.GreatFire, "spell-fire 3");
+		elementToSprite.Add(Materials.GreatAir, "spell-air 3");
+		elementToSprite.Add(Materials.GreatWater, "spell-water 3");
+		elementToSprite.Add(Materials.GreatEarth, "spell-earth 3");
 
 		TextAsset textAsset = (TextAsset) Resources.Load("UpgradeTree", typeof (TextAsset));
 		if (textAsset == null)
@@ -161,7 +177,7 @@ public class GameController : MonoBehaviour
 			JSONObject curJsonRune = jsonRunes[runeMeterial.ToString()];
 			for (int i = 0; i < curJsonRune.Count; i++)
 			{
-				runes.Add(runeMeterial, new Rune(curJsonRune[i], i + 1));
+				runes.Add(runeMeterial, new Rune(curJsonRune[i], i + 1, runeMeterial));
 			}
 		}
 	}
@@ -186,14 +202,14 @@ public class GameController : MonoBehaviour
 
 	private void GlyphenValve()
 	{
-		resourcesGrabber.greatFireCompCounter.Text = greatFireComponents.ToString();
-		glyphGrabber.greatFireCompCounter.Text = greatFireComponents.ToString();
-		resourcesGrabber.greatAirCompCounter.Text = greatAirComponents.ToString();
+		resourcesGrabber.runeLayers[0].greatAirCompCounter.Text = greatAirComponents.ToString();
+		resourcesGrabber.runeLayers[0].greatEarthCompCounter.Text = greatEarthComponents.ToString();
+		resourcesGrabber.runeLayers[0].greatFireCompCounter.Text = greatFireComponents.ToString();
+		resourcesGrabber.runeLayers[0].greatWaterCompCounter.Text = greatWaterComponents.ToString();
 		glyphGrabber.greatAirCompCounter.Text = greatAirComponents.ToString();
-		resourcesGrabber.greatWaterCompCounter.Text = greatWaterComponents.ToString();
-		glyphGrabber.greatWaterCompCounter.Text = greatWaterComponents.ToString();
-		resourcesGrabber.greatEarthCompCounter.Text = greatEarthComponents.ToString();
 		glyphGrabber.greatEarthCompCounter.Text = greatEarthComponents.ToString();
+		glyphGrabber.greatFireCompCounter.Text = greatFireComponents.ToString();
+		glyphGrabber.greatWaterCompCounter.Text = greatWaterComponents.ToString();
 	}
 
 	#endregion

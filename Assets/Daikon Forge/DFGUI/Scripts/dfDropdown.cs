@@ -15,7 +15,7 @@ using System.Collections.Generic;
 [ExecuteInEditMode]
 [RequireComponent( typeof( BoxCollider ) )]
 [AddComponentMenu( "Daikon Forge/User Interface/Dropdown List" )]
-public class dfDropdown : dfInteractiveBase
+public class dfDropdown : dfInteractiveBase, IDFMultiRender
 {
 
 	#region Public enumerations 
@@ -74,7 +74,7 @@ public class dfDropdown : dfInteractiveBase
 	#region Serialized protected members 
 
 	[SerializeField]
-	protected dfFont font;
+	protected dfFontBase font;
 
 	[SerializeField]
 	protected int selectedIndex = -1;
@@ -133,6 +133,9 @@ public class dfDropdown : dfInteractiveBase
 	[SerializeField]
 	protected Vector2 shadowOffset = new Vector2( 1, -1 );
 
+	[SerializeField]
+	protected bool openOnMouseDown = false;
+
 	#endregion
 
 	#region Private non-serialized variables 
@@ -149,7 +152,7 @@ public class dfDropdown : dfInteractiveBase
 	/// Gets or sets the <see cref="dfFont"/> instance that will be used 
 	/// to render the list items
 	/// </summary>
-	public dfFont Font
+	public dfFontBase Font
 	{
 		get
 		{
@@ -473,6 +476,16 @@ public class dfDropdown : dfInteractiveBase
 	}
 
 	/// <summary>
+	/// Gets or sets whether the dropdown will open the popup menu
+	/// on a MouseDown action.
+	/// </summary>
+	public bool OpenOnMouseDown
+	{
+		get { return this.openOnMouseDown; }
+		set { this.openOnMouseDown = value; }
+	}
+
+	/// <summary>
 	/// Gets or sets whether text items will be rendered with a shadow
 	/// </summary>
 	public bool Shadow
@@ -537,6 +550,28 @@ public class dfDropdown : dfInteractiveBase
 
 	}
 
+	protected internal override void OnMouseDown( dfMouseEventArgs args )
+	{
+
+		if( openOnMouseDown && !args.Used && args.Buttons == dfMouseButtons.Left && args.Source == this )
+		{
+
+			args.Use();
+			base.OnMouseDown( args );
+
+			if( this.popup != null )
+				closePopup();
+			else
+				openPopup();
+
+		}
+		else
+		{
+			base.OnMouseDown( args );
+		}
+
+	}
+
 	protected internal override void OnKeyDown( dfKeyEventArgs args )
 	{
 
@@ -556,10 +591,7 @@ public class dfDropdown : dfInteractiveBase
 				break;
 			case KeyCode.Space:
 			case KeyCode.Return:
-				if( triggerButton != null )
-				{
-					triggerButton.DoClick();
-				}
+				openPopup();
 				break;
 		}
 
@@ -673,7 +705,24 @@ public class dfDropdown : dfInteractiveBase
 
 	void trigger_Click( dfControl control, dfMouseEventArgs mouseEvent )
 	{
-		openPopup();
+
+		if( mouseEvent.Source == triggerButton && !mouseEvent.Used )
+		{
+
+			mouseEvent.Use();
+
+			if( popup == null )
+			{
+				openPopup();
+			}
+			else
+			{
+				Debug.Log( "Close popup" );
+				closePopup();
+			}
+
+		}
+
 	}
 
 	protected internal virtual void OnSelectedIndexChanged()
@@ -692,20 +741,7 @@ public class dfDropdown : dfInteractiveBase
 
 	#region Rendering  
 
-	protected override void OnRebuildRenderData()
-	{
-
-		if( Atlas == null || Font == null || string.IsNullOrEmpty( backgroundSprite ) )
-			return;
-
-		renderData.Material = Atlas.Material;
-
-		renderBackground();
-		renderText();
-
-	}
-
-	private void renderText()
+	private void renderText( dfRenderData buffer )
 	{
 
 		if( selectedIndex < 0 || selectedIndex >= items.Length  )
@@ -743,7 +779,14 @@ public class dfDropdown : dfInteractiveBase
 			textRenderer.ShadowColor = this.ShadowColor;
 			textRenderer.ShadowOffset = this.ShadowOffset;
 
-			textRenderer.Render( selectedItem, renderData );
+			var dynamicFontRenderer = textRenderer as dfDynamicFont.DynamicFontRenderer;
+			if( dynamicFontRenderer != null )
+			{
+				dynamicFontRenderer.SpriteAtlas = this.Atlas;
+				dynamicFontRenderer.SpriteBuffer = buffer;
+			}
+
+			textRenderer.Render( selectedItem, buffer );
 
 		}
 
@@ -830,21 +873,14 @@ public class dfDropdown : dfInteractiveBase
 		if( popup != null || items.Length == 0 )
 			return;
 
-		// Find the top-level parent of this control to attach the popup list to. 
-		// This is done under the assumption that the top-level control will either be
-		// a panel that does not move or a window that does, and that if the parent
-		// is moved, the dropdown list will remain in the proper position relative
-		// to this control.
-		var root = this.GetRootContainer();
-
 		var popupSize = calculatePopupSize();
 
 		// Create the popup list and set all necessary properties
-		popup = root.AddControl<dfListbox>();
+		popup = GetManager().AddControl<dfListbox>();
 		popup.name = this.name + " - Dropdown List";
 		popup.gameObject.hideFlags = HideFlags.DontSave;
 		popup.Atlas = this.Atlas;
-		popup.Anchor = dfAnchorStyle.None;
+		popup.Anchor = dfAnchorStyle.Left | dfAnchorStyle.Top;
 		popup.Font = this.Font;
 		popup.Pivot = dfPivotPoint.TopLeft;
 		popup.Size = popupSize; 
@@ -991,6 +1027,81 @@ public class dfDropdown : dfInteractiveBase
 	{
 		this.SelectedIndex = selectedIndex;
 		Invalidate();
+	}
+
+	#endregion
+
+	#region IDFMultiRender Members
+
+	private dfRenderData textRenderData = null;
+	private dfList<dfRenderData> buffers = dfList<dfRenderData>.Obtain();
+
+	public dfList<dfRenderData> RenderMultiple()
+	{
+
+		if( Atlas == null || Font == null )
+			return null;
+
+		if( !isVisible )
+		{
+			return null;
+		}
+
+		// Initialize render buffers if needed
+		if( renderData == null )
+		{
+
+			renderData = dfRenderData.Obtain();
+			textRenderData = dfRenderData.Obtain();
+
+			isControlInvalidated = true;
+
+		}
+
+		// If control is not dirty, update the transforms on the 
+		// render buffers (in case control moved) and return 
+		// pre-rendered data
+		if( !isControlInvalidated )
+		{
+			for( int i = 0; i < buffers.Count; i++ )
+			{
+				buffers[ i ].Transform = transform.localToWorldMatrix;
+			}
+			return buffers;
+		}
+
+		#region Prepare render buffers
+
+		buffers.Clear();
+
+		renderData.Clear();
+		renderData.Material = Atlas.Material;
+		renderData.Transform = this.transform.localToWorldMatrix;
+		buffers.Add( renderData );
+
+		textRenderData.Clear();
+		textRenderData.Material = Atlas.Material;
+		textRenderData.Transform = this.transform.localToWorldMatrix;
+		buffers.Add( textRenderData );
+
+		#endregion
+
+		// Render background before anything else, since we're going to 
+		// want to keep track of where the background data ends and any
+		// other data begins
+		renderBackground();
+
+		// Render text item
+		renderText( textRenderData );
+
+		// Control is no longer in need of rendering
+		isControlInvalidated = false;
+
+		// Make sure that the collider size always matches the control
+		updateCollider();
+
+		return buffers;
+
 	}
 
 	#endregion

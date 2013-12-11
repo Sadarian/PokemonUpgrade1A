@@ -15,15 +15,25 @@ public class dfEditorUtil
 
 	public static Component clipboard;
 
-	private static Queue<Action> actionQueue = null;
+	private static Queue<System.Action> actionQueue = null;
 
-	public static void DelayedInvoke( Action callback )
+	public static dfPropertyGroup BeginGroup( string label )
+	{
+		return BeginGroup( label, LabelWidth );
+	}
+
+	public static dfPropertyGroup BeginGroup( string label, float labelWidth )
+	{
+		return new dfPropertyGroup( label, labelWidth );
+	}
+
+	public static void DelayedInvoke( System.Action callback )
 	{
 
 		if( actionQueue == null )
 		{
 
-			actionQueue = new Queue<Action>();
+			actionQueue = new Queue<System.Action>();
 
 			EditorApplication.update += () =>
 			{
@@ -45,6 +55,9 @@ public class dfEditorUtil
 		get
 		{
 
+#if UNITY_4_3
+			return EditorGUIUtility.labelWidth;
+#else
 			var members = typeof( EditorGUIUtility ).GetMember( "labelWidth", BindingFlags.Public | BindingFlags.NonPublic | BindingFlags.Static );
 			if( members == null || members.Length != 1 )
 				return 75f;
@@ -62,11 +75,15 @@ public class dfEditorUtil
 			}
 
 			return 75f;
+#endif
 
 		}
 		set
 		{
 
+#if UNITY_4_3
+			EditorGUIUtility.labelWidth = value;
+#else
 			var members = typeof( EditorGUIUtility ).GetMember( "labelWidth", BindingFlags.Public | BindingFlags.NonPublic | BindingFlags.Static );
 			if( members == null || members.Length != 1 )
 				return;
@@ -82,16 +99,111 @@ public class dfEditorUtil
 			{
 				( (PropertyInfo)member ).SetValue( null, value, null );
 			}
+#endif
 
 		}
 	}
 
 	public static void MarkUndo( Object target, string UndoMessage )
 	{
-		//Debug.Log( UndoMessage );
+
+#if UNITY_4_3
+		
+		// HACK: Workaround for broken Unity undo handling
+		var views = Object.FindObjectsOfType<dfGUIManager>();
+		for( int i = 0; i < views.Length; i++ )
+		{
+			var manager = views[ i ];
+			Undo.RegisterFullObjectHierarchyUndo( manager );
+			EditorUtility.SetDirty( manager );
+		}
+
+		Undo.RecordObject( target, UndoMessage );
+
+#else
 		Undo.RegisterSceneUndo( UndoMessage );
+#endif
+
 		EditorUtility.SetDirty( target );
-		//SceneView.RepaintAll();
+
+	}
+
+	public static Vector2 EditInt2( string groupLabel, string label1, string label2, Vector2 value )
+	{
+
+		var retVal = Vector2.zero;
+
+		var savedLabelWidth = dfEditorUtil.LabelWidth;
+
+		GUILayout.BeginHorizontal();
+		{
+
+			EditorGUILayout.LabelField( groupLabel, "", GUILayout.Width( dfEditorUtil.LabelWidth - 12 ) );
+
+			GUILayout.BeginVertical();
+			{
+
+				dfEditorUtil.LabelWidth = 60f;
+
+				var x = EditorGUILayout.IntField( label1, Mathf.RoundToInt( value.x ) );
+				var y = EditorGUILayout.IntField( label2, Mathf.RoundToInt( value.y ) );
+
+				retVal.x = x;
+				retVal.y = y;
+
+			}
+			GUILayout.EndVertical();
+
+			GUILayout.FlexibleSpace();
+
+		}
+		GUILayout.EndHorizontal();
+
+		dfEditorUtil.LabelWidth = savedLabelWidth;
+
+		return retVal;
+
+	}
+
+	public static RectOffset EditPadding( string groupLabel, RectOffset value )
+	{
+
+		var savedLabelWidth = dfEditorUtil.LabelWidth;
+
+		EditorGUI.BeginChangeCheck();
+
+		var retVal = new RectOffset();
+
+		GUILayout.BeginHorizontal();
+		{
+
+			EditorGUILayout.LabelField( groupLabel, "", GUILayout.Width( dfEditorUtil.LabelWidth - 15 ) );
+
+			GUILayout.BeginVertical();
+			{
+
+				dfEditorUtil.LabelWidth = 65f;
+
+				retVal.left = EditorGUILayout.IntField( "Left", value != null ? value.left : 0 );
+				retVal.right = EditorGUILayout.IntField( "Right", value != null ? value.right : 0 );
+				retVal.top = EditorGUILayout.IntField( "Top", value != null ? value.top : 0 );
+				retVal.bottom = EditorGUILayout.IntField( "Bottom", value != null ? value.bottom : 0 );
+
+			}
+			GUILayout.EndVertical();
+
+			GUILayout.FlexibleSpace();
+
+		}
+		GUILayout.EndHorizontal();
+
+		dfEditorUtil.LabelWidth = savedLabelWidth;
+
+		if( EditorGUI.EndChangeCheck() )
+			return retVal;
+		else
+			return value;
+
 	}
 
 	public static void DrawHorzLine( int height = 2, int padding = 4 )
@@ -130,21 +242,6 @@ public class dfEditorUtil
 			GUI.color = savedColor;
 
 		}
-
-	}
-
-	public static void ComponentCopyButton( Object target )
-	{
-
-		EditorGUILayout.BeginHorizontal();
-		{
-			GUILayout.FlexibleSpace();
-			if( GUILayout.Button( "Copy", "minibutton" ) )
-			{
-				dfEditorUtil.clipboard = target as Component;
-			}
-		}
-		EditorGUILayout.EndHorizontal();
 
 	}
 
@@ -281,3 +378,49 @@ public class dfEditorUtil
 	}
 
 }
+
+public class dfPropertyGroup : IDisposable
+{
+
+	private float savedLabelWidth = 0;
+
+	public dfPropertyGroup( string label, float labelWidth = 100 )
+	{
+
+		savedLabelWidth = dfEditorUtil.LabelWidth;
+		
+		GUILayout.Label( label, "HeaderLabel" );
+		EditorGUI.indentLevel += 1;
+
+		dfEditorUtil.LabelWidth = labelWidth;
+
+	}
+
+	#region IDisposable Members
+
+	public void Dispose()
+	{
+		EditorGUI.indentLevel -= 1;
+		dfEditorUtil.LabelWidth = savedLabelWidth;
+	}
+
+	#endregion
+
+}
+
+/// <summary>
+/// Contains functions that implement context menus in the Unity Editor
+/// </summary>
+public static class dfEditorContextMenus
+{
+
+	[MenuItem( "CONTEXT/Component/Copy Component Reference" )]
+	public static void CopyControlReference( MenuCommand command )
+	{
+		var control = command.context as Component;
+		Debug.Log( "Control reference copied: " + control.name + " (" + control.GetType().Name + ")" );
+		dfEditorUtil.clipboard = control;
+	}
+
+}
+

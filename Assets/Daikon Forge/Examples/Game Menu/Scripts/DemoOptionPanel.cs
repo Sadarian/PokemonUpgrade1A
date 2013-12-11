@@ -5,6 +5,7 @@ using System.Linq;
 using System.Collections;
 using System.Collections.Generic;
 
+[AddComponentMenu( "Daikon Forge/Examples/Game Menu/Option Panel" )]
 [Serializable]
 public class DemoOptionPanel : DemoPanelBase
 {

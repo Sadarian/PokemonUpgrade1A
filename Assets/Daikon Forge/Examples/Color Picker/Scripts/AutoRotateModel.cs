@@ -1,6 +1,7 @@
 ﻿using UnityEngine;
 using System.Collections;
 
+[AddComponentMenu( "Daikon Forge/Examples/Color Picker/Auto-rotate Model" )]
 public class AutoRotateModel : MonoBehaviour
 {
 

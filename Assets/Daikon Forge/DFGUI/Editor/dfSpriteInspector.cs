@@ -39,10 +39,9 @@ public class dfSpriteInspector : dfControlInspector
 		if( !isFoldoutExpanded( foldouts, "Sprite Properties", true ) )
 			return false;
 
-		EditorGUIUtility.LookLikeControls( 110f );
-		EditorGUI.indentLevel += 1;
+		dfEditorUtil.LabelWidth = 110f;
 
-		GUILayout.Label( "Sprite", "HeaderLabel" );
+		using( dfEditorUtil.BeginGroup( "Sprite" ) )
 		{
 
 			SelectTextureAtlas( "Atlas", control, "Atlas", false, true );
@@ -54,7 +53,7 @@ public class dfSpriteInspector : dfControlInspector
 
 		}
 
-		GUILayout.Label( "Flip", "HeaderLabel" );
+		using( dfEditorUtil.BeginGroup( "Flip" ) )
 		{
 
 			var flipHorz = EditorGUILayout.Toggle( "Flip Horz", ( control.Flip & dfSpriteFlip.FlipHorizontal ) == dfSpriteFlip.FlipHorizontal );
@@ -73,7 +72,7 @@ public class dfSpriteInspector : dfControlInspector
 		if( !( control is dfRadialSprite ) )
 		{
 
-			GUILayout.Label( "Fill", "HeaderLabel" );
+			using( dfEditorUtil.BeginGroup( "Fill" ) )
 			{
 
 				var fillType = (dfFillDirection)EditorGUILayout.EnumPopup( "Fill Direction", control.FillDirection );

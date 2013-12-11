@@ -67,10 +67,9 @@ Total controls: {3}
 
 		}
 
-		EditorGUIUtility.LookLikeControls( 130f );
-		EditorGUI.indentLevel += 1;
+		dfEditorUtil.LabelWidth = 130f;
 
-		GUILayout.Label( "Rendering", "HeaderLabel" );
+		using( dfEditorUtil.BeginGroup( "Rendering and Behavior" ) )
 		{
 
 			if( view.RenderCamera == null )
@@ -134,9 +133,16 @@ Total controls: {3}
 				view.Render();
 			}
 
+			var eatMouseEvents = EditorGUILayout.Toggle( "Consume Mouse", view.ConsumeMouseEvents );
+			if( eatMouseEvents != view.ConsumeMouseEvents )
+			{
+				dfEditorUtil.MarkUndo( view, "Change 'Consume Mouse Events' property" );
+				view.ConsumeMouseEvents = eatMouseEvents;
+			}
+
 		}
 
-		GUILayout.Label( "Defaults and Materials", "HeaderLabel");
+		using( dfEditorUtil.BeginGroup( "Defaults and Materials" ) )
 		{
 
 			SelectTextureAtlas( "Default Atlas", view, "DefaultAtlas", false, true, 125 );
@@ -161,7 +167,7 @@ Total controls: {3}
 
 		}
 
-		GUILayout.Label( "Resolution", "HeaderLabel" );
+		using( dfEditorUtil.BeginGroup( "Target Resolution" ) )
 		{
 
 			#region Force user to apply changes to scale 
@@ -184,6 +190,19 @@ Total controls: {3}
 			GUI.enabled = true;
 
 			#endregion
+
+			if( Application.isPlaying )
+			{
+
+				var offset = EditInt2( "Offset", "X", "Y", view.UIOffset );
+				if( offset != view.UIOffset )
+				{
+					dfEditorUtil.MarkUndo( view, "Change UI Offset" );
+					view.UIOffset = offset;
+					view.Render();
+				}
+
+			}
 
 			#region Force user to apply changes to width or height
 
@@ -218,13 +237,16 @@ Total controls: {3}
 
 					dfEditorUtil.MarkUndo( view, "Change Resolution" );
 
-#if WEB_PLAYER
-					view.FixedWidth = PlayerSettings.defaultWebScreenWidth;
-					view.FixedHeight = PlayerSettings.defaultWebScreenHeight;
-#else
-					view.FixedWidth = PlayerSettings.defaultScreenWidth;
-					view.FixedHeight = PlayerSettings.defaultScreenHeight;
+					var newWidth = PlayerSettings.defaultScreenWidth;
+					var newHeight = PlayerSettings.defaultScreenHeight;
+
+#if UNITY_WEBPLAYER
+					newWidth = PlayerSettings.defaultWebScreenWidth;
+					newHeight = PlayerSettings.defaultWebScreenHeight;
 #endif
+
+					view.FixedWidth = newWidth;
+					view.FixedHeight = newHeight;
 
 					view.RenderCamera.aspect = view.FixedWidth / view.FixedHeight;
 					view.Render();
@@ -239,9 +261,7 @@ Total controls: {3}
 
 		}
 
-
-
-		GUILayout.Label( "Designer", "HeaderLabel" );
+		using( dfEditorUtil.BeginGroup( "Design-Time Properties" ) )
 		{
 
 			var showMeshConfig = EditorPrefs.GetBool( "dfGUIManager.ShowMesh", false );
@@ -336,31 +356,6 @@ Total controls: {3}
 		}
 		EditorGUILayout.EndHorizontal();
 
-		if( Application.isPlaying )
-		{
-
-			for( int i = 0; i < view.TotalDrawCalls; i++ )
-			{
-
-				dfEditorUtil.DrawSeparator();
-
-				var drawcall = view.GetDrawCallBuffer( i );
-				if( drawcall.Material == null )
-				{
-					continue;
-				}
-
-				GUILayout.Label( "Draw call: " + ( i + 1 ), "HeaderLabel" );
-
-				EditorGUILayout.ObjectField( "Material", drawcall.Material, typeof( Material ), false );
-				EditorGUILayout.IntField( "Triangles: ", drawcall.Triangles.Count / 3 );
-
-			}
-
-			dfEditorUtil.DrawSeparator();
-
-		}
-
 	}
 
 	public void OnSceneGUI()
@@ -418,7 +413,7 @@ Total controls: {3}
 		var items = new List<ContextMenuItem>();
 		FillContextMenu( items );
 
-		var actionFunc = new Action<int>( ( command ) =>
+		var actionFunc = new System.Action<int>( ( command ) =>
 		{
 			var handler = items[ command ].Handler;
 			handler();
@@ -435,6 +430,43 @@ Total controls: {3}
 		}
 
 		menu.ShowAsContext();
+
+	}
+
+	protected Vector2 EditInt2( string groupLabel, string label1, string label2, Vector2 value )
+	{
+
+		var retVal = Vector2.zero;
+
+		var savedLabelWidth = dfEditorUtil.LabelWidth;
+
+		GUILayout.BeginHorizontal();
+		{
+
+			EditorGUILayout.LabelField( groupLabel, "", GUILayout.Width( dfEditorUtil.LabelWidth - 12 ) );
+
+			GUILayout.BeginVertical();
+			{
+
+				dfEditorUtil.LabelWidth = 60f;
+
+				var x = EditorGUILayout.IntField( label1, Mathf.RoundToInt( value.x ) );
+				var y = EditorGUILayout.IntField( label2, Mathf.RoundToInt( value.y ) );
+
+				retVal.x = x;
+				retVal.y = y;
+
+			}
+			GUILayout.EndVertical();
+
+			GUILayout.FlexibleSpace();
+
+		}
+		GUILayout.EndHorizontal();
+
+		dfEditorUtil.LabelWidth = savedLabelWidth;
+
+		return retVal;
 
 	}
 
@@ -463,7 +495,7 @@ Total controls: {3}
 		var mousePos = Event.current.mousePosition;
 		var controlPosition = raycast( mousePos );
 
-		Action selectPrefab = () =>
+		System.Action selectPrefab = () =>
 		{
 			dfPrefabSelectionDialog.Show(
 				"Select a prefab Control",
@@ -610,7 +642,6 @@ Total controls: {3}
 				var child = view.AddControl( type );
 				child.name = childName;
 				child.transform.position = controlPosition;
-				child.ZOrder = getMaxZOrder() + 1;
 
 				Selection.activeGameObject = child.gameObject;
 
@@ -750,7 +781,7 @@ Total controls: {3}
 
 			if( showDialog )
 			{
-				dfEditorUtil.DelayedInvoke( (Action)( () =>
+				dfEditorUtil.DelayedInvoke( (System.Action)( () =>
 				{
 					var dialog = dfPrefabSelectionDialog.Show( "Select Texture Atlas", typeof( dfAtlas ), selectionCallback, dfTextureAtlasInspector.DrawAtlasPreview, null );
 					dialog.previewSize = 200;
@@ -858,7 +889,7 @@ Total controls: {3}
 
 			if( showDialog )
 			{
-				dfEditorUtil.DelayedInvoke( (Action)( () =>
+				dfEditorUtil.DelayedInvoke( (System.Action)( () =>
 				{
 					dfPrefabSelectionDialog.Show( "Select Font", typeof( dfFont ), selectionCallback, dfFontDefinitionInspector.DrawFontPreview, filterCallback );
 				} ) );
@@ -876,7 +907,7 @@ Total controls: {3}
 	protected class ContextMenuItem
 	{
 		public string MenuText;
-		public Action Handler;
+		public System.Action Handler;
 	}
 
 	public bool HasFrameBounds()

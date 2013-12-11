@@ -4,6 +4,7 @@ using System.Collections.Generic;
 
 using UnityEngine;
 
+[AddComponentMenu( "Daikon Forge/Examples/General/Control Navigation" )]
 public class ControlNavigation : MonoBehaviour
 {
 

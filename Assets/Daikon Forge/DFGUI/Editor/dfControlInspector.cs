@@ -52,6 +52,7 @@ public class dfControlInspector : Editor
 		}
 
 		var isValidControl =
+			control.gameObject.activeInHierarchy &&
 			control.transform.parent != null &&
 			control.GetManager() != null;
 
@@ -61,18 +62,12 @@ public class dfControlInspector : Editor
 			return;
 		}
 
-		dfEditorUtil.ComponentCopyButton( target );
-
-		var indentLevel = EditorGUI.indentLevel;
-
 		if( isFoldoutExpanded( commonFoldouts, "Control Properties" ) )
 		{
 			OnInspectCommonProperties( control );
-			EditorGUI.indentLevel = indentLevel;
 		}
 
 		OnCustomInspector();
-		EditorGUI.indentLevel = indentLevel;
 
 		EditorGUILayout.Separator();
 
@@ -80,11 +75,15 @@ public class dfControlInspector : Editor
 
 	private void OnInspectMultiple()
 	{
+		showAlignmentButtons();
+	}
 
-		EditorGUIUtility.LookLikeControls( 110f );
-		EditorGUI.indentLevel += 1;
+	private void showAlignmentButtons()
+	{
 
-		GUILayout.Label( "Align Edges", "HeaderLabel" );
+		dfEditorUtil.LabelWidth = 110f;
+
+		using( dfEditorUtil.BeginGroup( "Align Edges" ) )
 		{
 
 			GUILayout.BeginHorizontal();
@@ -99,7 +98,7 @@ public class dfControlInspector : Editor
 
 		}
 
-		GUILayout.Label( "Align Centers", "HeaderLabel" );
+		using( dfEditorUtil.BeginGroup( "Align Centers" ) )
 		{
 
 			GUILayout.BeginHorizontal();
@@ -112,7 +111,7 @@ public class dfControlInspector : Editor
 
 		}
 
-		GUILayout.Label( "Distribute", "HeaderLabel" );
+		using( dfEditorUtil.BeginGroup( "Distribute" ) )
 		{
 
 			GUILayout.BeginHorizontal();
@@ -125,7 +124,7 @@ public class dfControlInspector : Editor
 
 		}
 
-		GUILayout.Label( "Make Same Size", "HeaderLabel" );
+		using( dfEditorUtil.BeginGroup( "Make Same Size" ) )
 		{
 
 			GUILayout.BeginHorizontal();
@@ -143,14 +142,13 @@ public class dfControlInspector : Editor
 	private void OnInspectCommonProperties( dfControl control )
 	{
 
-		EditorGUIUtility.LookLikeControls( 110f );
-		EditorGUI.indentLevel += 1;
+		dfEditorUtil.LabelWidth = 110f;
 
-		GUILayout.Label( "Layout", "HeaderLabel" );
+		using( dfEditorUtil.BeginGroup( "Layout" ) )
 		{
 
 			EditorGUI.BeginChangeCheck();
-			var rel = EditInt2( "Position", "Left", "Top", control.RelativePosition );
+			var rel = dfEditorUtil.EditInt2( "Position", "Left", "Top", control.RelativePosition );
 			if( EditorGUI.EndChangeCheck() && Vector2.Distance( rel, control.RelativePosition ) > float.Epsilon )
 			{
 				dfEditorUtil.MarkUndo( control, "Change control Position" );
@@ -158,7 +156,7 @@ public class dfControlInspector : Editor
 			}
 
 			EditorGUI.BeginChangeCheck();
-			var size = EditInt2( "Size", "Width", "Height", control.Size );
+			var size = dfEditorUtil.EditInt2( "Size", "Width", "Height", control.Size );
 			if( EditorGUI.EndChangeCheck() && Vector2.Distance( size, control.Size ) > float.Epsilon )
 			{
 
@@ -190,17 +188,17 @@ public class dfControlInspector : Editor
 
 		}
 
-		GUILayout.Label( "Size Limits", "HeaderLabel" );
+		using( dfEditorUtil.BeginGroup( "Size Limits" ) )
 		{
 
-			var minSize = EditInt2( "Min. Size", "Width", "Height", control.MinimumSize );
+			var minSize = dfEditorUtil.EditInt2( "Min. Size", "Width", "Height", control.MinimumSize );
 			if( Vector2.Distance( minSize, control.MinimumSize ) > float.Epsilon )
 			{
 				dfEditorUtil.MarkUndo( control, "Change minimum size" );
 				control.MinimumSize = minSize;
 			}
 
-			var maxSize = EditInt2( "Max. Size", "Width", "Height", control.MaximumSize );
+			var maxSize = dfEditorUtil.EditInt2( "Max. Size", "Width", "Height", control.MaximumSize );
 			if( Vector2.Distance( maxSize, control.MaximumSize ) > float.Epsilon )
 			{
 				dfEditorUtil.MarkUndo( control, "Change minimum size" );
@@ -216,7 +214,7 @@ public class dfControlInspector : Editor
 
 		}
 
-		GUILayout.Label( "Behavior", "HeaderLabel" );
+		using( dfEditorUtil.BeginGroup( "Behavior" ) )
 		{
 
 			var enabled = EditorGUILayout.Toggle( "Enabled", control.IsEnabled );
@@ -226,12 +224,14 @@ public class dfControlInspector : Editor
 				control.IsEnabled = enabled;
 			}
 
+			GUI.enabled = canEditIsVisibleProperty( control );
 			var visible = EditorGUILayout.Toggle( "Visible", control.IsVisible );
 			if( visible != control.IsVisible )
 			{
 				dfEditorUtil.MarkUndo( control, "Change control Visible" );
 				control.IsVisible = visible;
 			}
+			GUI.enabled = true;
 
 			var interactive = EditorGUILayout.Toggle( "Interactive", control.IsInteractive );
 			if( interactive != control.IsInteractive )
@@ -256,7 +256,7 @@ public class dfControlInspector : Editor
 
 		}
 
-		GUILayout.Label( "Appearance", "HeaderLabel" );
+		using( dfEditorUtil.BeginGroup( "Appearance" ) )
 		{
 
 			var color = EditorGUILayout.ColorField( "Color", control.Color );
@@ -282,7 +282,9 @@ public class dfControlInspector : Editor
 			}
 
 			var controlGroup = getControlGroup( control );
-			var maxIndex = controlGroup.Max( x => x.ZOrder );
+			var maxIndex = controlGroup != null && controlGroup.Count > 0 
+				? controlGroup.Max( x => x.ZOrder )
+				: 0;
 
 			var zorder = EditorGUILayout.IntSlider( "Z-Order", control.ZOrder, 0, maxIndex );
 			if( zorder != control.ZOrder )
@@ -340,6 +342,30 @@ public class dfControlInspector : Editor
 
 	}
 
+	private bool canEditIsVisibleProperty( dfControl control )
+	{
+
+		if( control.Parent == null )
+			return true;
+
+		control = control.Parent;
+
+		while( control != null )
+		{
+			
+			var serialized = new SerializedObject( control );
+			var property = serialized.FindProperty( "isVisible" ).boolValue;
+			if( !property )
+				return false;
+
+			control = control.Parent;
+
+		}
+
+		return true;
+
+	}
+
 	private void setZOrder( List<dfControl> group, dfControl control, int zorder )
 	{
 
@@ -367,7 +393,7 @@ public class dfControlInspector : Editor
 	private List<dfControl> getControlGroup( dfControl control )
 	{
 
-		if( control.Parent != null )
+		if( control.transform.parent != null && control.Parent != null )
 		{
 			return control.Parent.Controls.ToList();
 		}
@@ -425,47 +451,10 @@ public class dfControlInspector : Editor
 			GUILayout.BeginVertical();
 			{
 
-				EditorGUIUtility.LookLikeControls( 60f );
+				dfEditorUtil.LabelWidth = 60f;
 
 				var x = EditorGUILayout.FloatField( label1, value.x );
 				var y = EditorGUILayout.FloatField( label2, value.y );
-
-				retVal.x = x;
-				retVal.y = y;
-
-			}
-			GUILayout.EndVertical();
-
-			GUILayout.FlexibleSpace();
-
-		}
-		GUILayout.EndHorizontal();
-
-		dfEditorUtil.LabelWidth = savedLabelWidth;
-
-		return retVal;
-
-	}
-
-	protected Vector2 EditInt2( string groupLabel, string label1, string label2, Vector2 value )
-	{
-
-		var retVal = Vector2.zero;
-
-		var savedLabelWidth = dfEditorUtil.LabelWidth;
-
-		GUILayout.BeginHorizontal();
-		{
-
-			EditorGUILayout.LabelField( groupLabel, "", GUILayout.Width( dfEditorUtil.LabelWidth - 12 ) );
-
-			GUILayout.BeginVertical();
-			{
-
-				EditorGUIUtility.LookLikeControls( 60f );
-
-				var x = EditorGUILayout.IntField( label1, Mathf.RoundToInt( value.x ) );
-				var y = EditorGUILayout.IntField( label2, Mathf.RoundToInt( value.y ) );
 
 				retVal.x = x;
 				retVal.y = y;
@@ -537,7 +526,7 @@ public class dfControlInspector : Editor
 
 			if( GUI.enabled && GUILayout.Button( new GUIContent( " ", "Edit" ), "IN ObjectField", GUILayout.Width( 14 ) ) )
 			{
-				dfEditorUtil.DelayedInvoke( (Action)( () =>
+				dfEditorUtil.DelayedInvoke( (System.Action)( () =>
 				{
 					dfPrefabSelectionDialog.Show( "Select " + ObjectNames.NicifyVariableName( typeof( T ).Name ), typeof( T ), selectionCallback, previewCallback, filter );
 				} ) );
@@ -617,7 +606,7 @@ public class dfControlInspector : Editor
 
 				if( GUI.enabled && GUILayout.Button( new GUIContent( " ", "Edit Atlas" ), "IN ObjectField", GUILayout.Width( 14 ) ) )
 				{
-					dfEditorUtil.DelayedInvoke( (Action)( () =>
+					dfEditorUtil.DelayedInvoke( (System.Action)( () =>
 					{
 						var dialog = dfPrefabSelectionDialog.Show( "Select Texture Atlas", typeof( dfAtlas ), selectionCallback, dfTextureAtlasInspector.DrawAtlasPreview, null );
 						dialog.previewSize = 200;
@@ -638,7 +627,7 @@ public class dfControlInspector : Editor
 
 	}
 
-	protected internal static void SelectFontDefinition( string label, dfAtlas atlas, dfControl control, string propertyName, bool colorizeIfMissing )
+	protected internal static void SelectFontDefinition( string label, dfAtlas atlas, dfControl control, string propertyName, bool colorizeIfMissing, bool allowDynamicFonts = false )
 	{
 
 		var savedColor = GUI.color;
@@ -646,7 +635,7 @@ public class dfControlInspector : Editor
 		try
 		{
 
-			var value = (dfFont)getValue( control, propertyName );
+			var value = (dfFontBase)getValue( control, propertyName );
 
 			if( value == null && colorizeIfMissing )
 				GUI.color = Color.red;
@@ -665,9 +654,12 @@ public class dfControlInspector : Editor
 
 			dfPrefabSelectionDialog.SelectionCallback selectionCallback = delegate( GameObject item )
 			{
-				var font = ( item == null ) ? null : item.GetComponent<dfFont>();
+				
+				var font = ( item == null ) ? null : item.GetComponent<dfFontBase>();
+				
 				dfEditorUtil.MarkUndo( control, "Change Font" );
 				setValue( control, propertyName, font );
+
 			};
 
 			EditorGUILayout.BeginHorizontal();
@@ -699,21 +691,33 @@ public class dfControlInspector : Editor
 					{
 						if( textRect.Contains( evt.mousePosition ) )
 						{
+							
 							var draggedObject = DragAndDrop.objectReferences.First() as GameObject;
-							var draggedFont = draggedObject != null ? draggedObject.GetComponent<dfFont>() : null;
-							DragAndDrop.visualMode = ( draggedFont != null ) ? DragAndDropVisualMode.Copy : DragAndDropVisualMode.None;
+							var draggedFont =
+								( draggedObject != null )
+								? draggedObject.GetComponent<dfFontBase>() 
+								: null;
+
+							var block = ( draggedFont is dfDynamicFont ) &&!allowDynamicFonts;
+
+							DragAndDrop.visualMode = ( draggedFont != null && !block )
+								? DragAndDropVisualMode.Copy 
+								: DragAndDropVisualMode.None;
+							
 							if( evt.type == EventType.DragPerform )
 							{
 								selectionCallback( draggedObject );
 							}
+
 							evt.Use();
+
 						}
 					}
 				}
 
 				if( GUI.enabled && GUILayout.Button( new GUIContent( " ", "Edit Font" ), "IN ObjectField", GUILayout.Width( 14 ) ) )
 				{
-					dfEditorUtil.DelayedInvoke( (Action)( () =>
+					dfEditorUtil.DelayedInvoke( (System.Action)( () =>
 					{
 						dfPrefabSelectionDialog.Show( "Select Font", typeof( dfFont ), selectionCallback, dfFontDefinitionInspector.DrawFontPreview, filterCallback );
 					} ) );
@@ -779,7 +783,7 @@ public class dfControlInspector : Editor
 
 				if( GUI.enabled && GUILayout.Button( new GUIContent( " ", "Edit " + label ), "IN ObjectField", GUILayout.Width( 14 ) ) )
 				{
-					dfEditorUtil.DelayedInvoke( (Action)( () =>
+					dfEditorUtil.DelayedInvoke( (System.Action)( () =>
 					{
 						dfSpriteSelectionDialog.Show( "Select Sprite: " + label, atlas, value, callback );
 					} ) );
@@ -815,156 +819,113 @@ public class dfControlInspector : Editor
 		return property.GetValue( control, null );
 	}
 
-	protected RectOffset EditPadding( string groupLabel, RectOffset value )
-	{
-
-		var savedLabelWidth = dfEditorUtil.LabelWidth;
-
-		EditorGUI.BeginChangeCheck();
-
-		var retVal = new RectOffset();
-
-		GUILayout.BeginHorizontal();
-		{
-
-			EditorGUILayout.LabelField( groupLabel, "", GUILayout.Width( dfEditorUtil.LabelWidth - 15 ) );
-
-			GUILayout.BeginVertical();
-			{
-
-				EditorGUIUtility.LookLikeControls( 65f );
-
-				retVal.left = EditorGUILayout.IntField( "Left", value != null ? value.left : 0 );
-				retVal.right = EditorGUILayout.IntField( "Right", value != null ? value.right : 0 );
-				retVal.top = EditorGUILayout.IntField( "Top", value != null ? value.top : 0 );
-				retVal.bottom = EditorGUILayout.IntField( "Bottom", value != null ? value.bottom : 0 );
-
-			}
-			GUILayout.EndVertical();
-
-			GUILayout.FlexibleSpace();
-
-		}
-		GUILayout.EndHorizontal();
-
-		dfEditorUtil.LabelWidth = savedLabelWidth;
-
-		if( EditorGUI.EndChangeCheck() )
-			return retVal;
-		else
-			return value;
-
-	}
-
-	private dfAnchorStyle EditAnchor( dfAnchorStyle value, int labelWidth = 85 )
+	private dfAnchorStyle EditAnchor( dfAnchorStyle value )
 	{
 
 		const float OPTION_WIDTH = 100f;
-
-		var labelWidthSave = dfEditorUtil.LabelWidth;
+		var labelWidth = 85;// dfEditorUtil.LabelWidth;
 
 		var retVal = value;
 
-		GUILayout.Label( "Anchor", "HeaderLabel" );
-		EditorGUI.indentLevel += 1;
-
-		GUILayout.BeginHorizontal();
+		using( dfEditorUtil.BeginGroup( "Anchor" ) )
 		{
 
-			EditorGUILayout.LabelField( "Anchor", "", GUILayout.Width( labelWidth ) );
-
-			GUILayout.BeginVertical();
+			GUILayout.BeginHorizontal();
 			{
 
-				EditorGUIUtility.LookLikeControls( OPTION_WIDTH );
+				EditorGUILayout.LabelField( "Anchor", "", GUILayout.Width( labelWidth ) );
 
-				var left = EditorGUILayout.Toggle( "Left", retVal.IsFlagSet( dfAnchorStyle.Left ) );
-				var right = EditorGUILayout.Toggle( "Right", retVal.IsFlagSet( dfAnchorStyle.Right ) );
-				var top = EditorGUILayout.Toggle( "Top", retVal.IsFlagSet( dfAnchorStyle.Top ) );
-				var bottom = EditorGUILayout.Toggle( "Bottom", retVal.IsFlagSet( dfAnchorStyle.Bottom ) );
-
-				retVal = retVal.SetFlag( dfAnchorStyle.Top, top );
-				retVal = retVal.SetFlag( dfAnchorStyle.Left, left );
-				retVal = retVal.SetFlag( dfAnchorStyle.Right, right );
-				retVal = retVal.SetFlag( dfAnchorStyle.Bottom, bottom );
-
-				if( top || bottom )
+				GUILayout.BeginVertical();
 				{
-					retVal = retVal.SetFlag( dfAnchorStyle.CenterVertical, false );
-				}
 
-				if( left || right )
-				{
-					retVal = retVal.SetFlag( dfAnchorStyle.CenterHorizontal, false );
+					dfEditorUtil.LabelWidth = OPTION_WIDTH;
+
+					var left = EditorGUILayout.Toggle( "Left", retVal.IsFlagSet( dfAnchorStyle.Left ) );
+					var right = EditorGUILayout.Toggle( "Right", retVal.IsFlagSet( dfAnchorStyle.Right ) );
+					var top = EditorGUILayout.Toggle( "Top", retVal.IsFlagSet( dfAnchorStyle.Top ) );
+					var bottom = EditorGUILayout.Toggle( "Bottom", retVal.IsFlagSet( dfAnchorStyle.Bottom ) );
+
+					retVal = retVal.SetFlag( dfAnchorStyle.Top, top );
+					retVal = retVal.SetFlag( dfAnchorStyle.Left, left );
+					retVal = retVal.SetFlag( dfAnchorStyle.Right, right );
+					retVal = retVal.SetFlag( dfAnchorStyle.Bottom, bottom );
+
+					if( top || bottom )
+					{
+						retVal = retVal.SetFlag( dfAnchorStyle.CenterVertical, false );
+					}
+
+					if( left || right )
+					{
+						retVal = retVal.SetFlag( dfAnchorStyle.CenterHorizontal, false );
+					}
+
 				}
+				GUILayout.EndVertical();
+
+				GUILayout.FlexibleSpace();
 
 			}
-			GUILayout.EndVertical();
+			GUILayout.EndHorizontal();
 
-			GUILayout.FlexibleSpace();
-
-		}
-		GUILayout.EndHorizontal();
-
-		GUILayout.BeginHorizontal();
-		{
-
-			EditorGUILayout.LabelField( "Center", "", GUILayout.Width( labelWidth ) );
-
-			GUILayout.BeginVertical();
+			GUILayout.BeginHorizontal();
 			{
 
-				EditorGUIUtility.LookLikeControls( OPTION_WIDTH );
+				EditorGUILayout.LabelField( "Center", "", GUILayout.Width( labelWidth ) );
 
-				var horz = EditorGUILayout.Toggle( "Horizontal", retVal.IsFlagSet( dfAnchorStyle.CenterHorizontal ) );
-				var vert = EditorGUILayout.Toggle( "Vertical", retVal.IsFlagSet( dfAnchorStyle.CenterVertical ) );
-
-				retVal = retVal.SetFlag( dfAnchorStyle.CenterHorizontal, horz );
-				retVal = retVal.SetFlag( dfAnchorStyle.CenterVertical, vert );
-
-				if( horz )
+				GUILayout.BeginVertical();
 				{
-					retVal = retVal.SetFlag( dfAnchorStyle.Left, false );
-					retVal = retVal.SetFlag( dfAnchorStyle.Right, false );
-				}
 
-				if( vert )
-				{
-					retVal = retVal.SetFlag( dfAnchorStyle.Top, false );
-					retVal = retVal.SetFlag( dfAnchorStyle.Bottom, false );
+					dfEditorUtil.LabelWidth = OPTION_WIDTH;
+
+					var horz = EditorGUILayout.Toggle( "Horizontal", retVal.IsFlagSet( dfAnchorStyle.CenterHorizontal ) );
+					var vert = EditorGUILayout.Toggle( "Vertical", retVal.IsFlagSet( dfAnchorStyle.CenterVertical ) );
+
+					retVal = retVal.SetFlag( dfAnchorStyle.CenterHorizontal, horz );
+					retVal = retVal.SetFlag( dfAnchorStyle.CenterVertical, vert );
+
+					if( horz )
+					{
+						retVal = retVal.SetFlag( dfAnchorStyle.Left, false );
+						retVal = retVal.SetFlag( dfAnchorStyle.Right, false );
+					}
+
+					if( vert )
+					{
+						retVal = retVal.SetFlag( dfAnchorStyle.Top, false );
+						retVal = retVal.SetFlag( dfAnchorStyle.Bottom, false );
+					}
+
 				}
+				GUILayout.EndVertical();
+
+				GUILayout.FlexibleSpace();
 
 			}
-			GUILayout.EndVertical();
+			GUILayout.EndHorizontal();
 
-			GUILayout.FlexibleSpace();
-
-		}
-		GUILayout.EndHorizontal();
-
-		GUILayout.BeginHorizontal();
-		{
-
-			EditorGUILayout.LabelField( "Mode", "", GUILayout.Width( labelWidth ) );
-
-			GUILayout.BeginVertical();
+			GUILayout.BeginHorizontal();
 			{
 
-				EditorGUIUtility.LookLikeControls( OPTION_WIDTH );
+				EditorGUILayout.LabelField( "Mode", "", GUILayout.Width( labelWidth ) );
 
-				var proportional = EditorGUILayout.Toggle( "Proportional", retVal.IsFlagSet( dfAnchorStyle.Proportional ) );
-				retVal = retVal.SetFlag( dfAnchorStyle.Proportional, proportional );
+				GUILayout.BeginVertical();
+				{
+
+					dfEditorUtil.LabelWidth = OPTION_WIDTH;
+
+					var proportional = EditorGUILayout.Toggle( "Proportional", retVal.IsFlagSet( dfAnchorStyle.Proportional ) );
+					retVal = retVal.SetFlag( dfAnchorStyle.Proportional, proportional );
+
+				}
+				GUILayout.EndVertical();
+
+				GUILayout.FlexibleSpace();
 
 			}
-			GUILayout.EndVertical();
-
-			GUILayout.FlexibleSpace();
+			GUILayout.EndHorizontal();
 
 		}
-		GUILayout.EndHorizontal();
-
-		EditorGUIUtility.LookLikeControls( labelWidthSave );
-		EditorGUI.indentLevel -= 1;
 
 		return retVal;
 
@@ -1049,10 +1010,15 @@ public class dfControlInspector : Editor
 		var rot = control.transform.localToWorldMatrix;
 		for( int i = 0; i < 4; i++ )
 		{
+
 			corners[ i ] = rot.MultiplyPoint( corners[ i ] - offset );
+
 		}
 
-		Handles.color = Color.green;
+		var handleColor = Handles.color;
+		var gizmoColor = Gizmos.color;
+
+		Handles.color = Gizmos.color = new Color( 0.3f, 0.75f, 1f, 0.5f );
 		Handles.DrawLine( corners[ 0 ], corners[ 1 ] );
 		Handles.DrawLine( corners[ 1 ], corners[ 2 ] );
 		Handles.DrawLine( corners[ 2 ], corners[ 3 ] );
@@ -1061,15 +1027,29 @@ public class dfControlInspector : Editor
 		if( control.gameObject == Selection.activeGameObject )
 		{
 
-			var handleRotation = control.transform.rotation;
+			var handleRotation = control.transform.rotation; 
+				
 			for( int i = 0; i < 4; i++ )
 			{
-				var handleLocation = resizeHandles[ i ] = Vector3.Lerp( corners[ i ], corners[ ( i + 1 ) % 4 ], 0.5f );
+
+				var handleLocation = resizeHandles[ i ] = Vector3.Lerp( corners[ i ], corners[ ( i + 1 ) % 4 ], 0.5f ); 
 				var handleSize = HandleUtility.GetHandleSize( handleLocation );
-				Handles.FreeMoveHandle( handleLocation, handleRotation, handleSize * 0.05f, Vector3.zero, Handles.DotCap );
+
+				Handles.SphereCap( -1, handleLocation, handleRotation, handleSize * 0.175f );
+				Handles.SphereCap( -1, handleLocation, handleRotation, handleSize * 0.175f );
+
+				// Support resize mouse cursor
+				var hsc = HandleUtility.WorldToGUIPoint( handleLocation );
+				var rect = new Rect( hsc.x - 10, hsc.y - 10, 20, 20 );
+				var cursor = ( i % 2 ) == 0 ? MouseCursor.ResizeHorizontal : MouseCursor.ResizeVertical;
+				EditorGUIUtility.AddCursorRect( rect, cursor );
+
 			}
 
 		}
+
+		Handles.color = handleColor;
+		Gizmos.color = gizmoColor;
 
 		switch( eventType )
 		{
@@ -1298,6 +1278,7 @@ public class dfControlInspector : Editor
 			Selection.gameObjects
 			.Select( c => c.GetComponent<dfControl>() )
 			.Where( c => c != null )
+			.OrderByDescending( c => c.RenderOrder )
 			.ToList();
 
 		for( int i = 0; i < controls.Count; i++ )
@@ -1460,7 +1441,7 @@ public class dfControlInspector : Editor
 		if( controls.Count == 0 )
 			return;
 
-		Undo.RegisterSceneUndo( "Resize control" );
+		markUndo( controls, "Resize control" );
 
 		var snapToGrid = EditorPrefs.GetBool( "dfGUIManager.SnapToGrid", false );
 		var gridSize = EditorPrefs.GetInt( "dfGUIManager.GridSize", 25 );
@@ -2185,6 +2166,29 @@ public class dfControlInspector : Editor
 
 	}
 
+	private void markUndo( List<dfControl> controls, string undoMessage )
+	{
+
+		if( controls == null || controls.Count == 0 )
+			return;
+
+#if UNITY_4_3
+
+		// Record undo information for the dfGUIManager instance that 
+		// is responsible for the controls
+		var manager = controls[ 0 ].GetManager();
+		Undo.RegisterFullObjectHierarchyUndo( manager );
+		EditorUtility.SetDirty( manager );
+
+		// Record undo information for each selected control
+		controls.ForEach( c => dfEditorUtil.MarkUndo( c, "Resize Control" ) );
+
+#else
+		Undo.RegisterSceneUndo( undoMessage );
+#endif
+
+	}
+
 	#region Control alignment functions 
 
 	private void alignEdgeLeft()
@@ -2208,7 +2212,7 @@ public class dfControlInspector : Editor
 
 		}
 
-		Undo.RegisterSceneUndo( "Align Left" );
+		markUndo( controls, "Align Left" );
 
 		for( int i = 0; i < controls.Count; i++ )
 		{
@@ -2257,7 +2261,7 @@ public class dfControlInspector : Editor
 
 		}
 
-		Undo.RegisterSceneUndo( "Align Right" );
+		markUndo( controls, "Align Right" );
 
 		for( int i = 0; i < controls.Count; i++ )
 		{
@@ -2306,7 +2310,7 @@ public class dfControlInspector : Editor
 
 		}
 
-		Undo.RegisterSceneUndo( "Align Top" );
+		markUndo( controls, "Align Top" );
 
 		for( int i = 0; i < controls.Count; i++ )
 		{
@@ -2355,7 +2359,7 @@ public class dfControlInspector : Editor
 
 		}
 
-		Undo.RegisterSceneUndo( "Align Top" );
+		markUndo( controls, "Align Top" );
 
 		for( int i = 0; i < controls.Count; i++ )
 		{
@@ -2407,7 +2411,7 @@ public class dfControlInspector : Editor
 
 		averagedCenter /= centers.Count;
 
-		Undo.RegisterSceneUndo( "Align Center Horizontally" );
+		markUndo( controls, "Align Center Horizontally" );
 
 		for( int i = 0; i < controls.Count; i++ )
 		{
@@ -2459,7 +2463,7 @@ public class dfControlInspector : Editor
 
 		averagedCenter /= centers.Count;
 
-		Undo.RegisterSceneUndo( "Align Center Vertically" );
+		markUndo( controls, "Align Center Vertically" );
 
 		for( int i = 0; i < controls.Count; i++ )
 		{
@@ -2502,7 +2506,7 @@ public class dfControlInspector : Editor
 			maxWidth = Mathf.Max( controls[ i ].Width, maxWidth );
 		}
 
-		Undo.RegisterSceneUndo( "Make same size" );
+		markUndo( controls, "Make same size" );
 
 		for( int i = 0; i < controls.Count; i++ )
 		{
@@ -2537,7 +2541,7 @@ public class dfControlInspector : Editor
 			maxHeight = Mathf.Max( controls[ i ].Height, maxHeight );
 		}
 
-		Undo.RegisterSceneUndo( "Make same size" );
+		markUndo( controls, "Make same size" );
 
 		for( int i = 0; i < controls.Count; i++ )
 		{
@@ -2584,7 +2588,7 @@ public class dfControlInspector : Editor
 
 		var step = ( maxX - minX ) / ( controls.Count - 1 );
 
-		Undo.RegisterSceneUndo( "Distribute Horizontally" );
+		markUndo( controls, "Distribute Horizontally" );
 
 		for( int i = 0; i < controls.Count; i++ )
 		{
@@ -2635,7 +2639,7 @@ public class dfControlInspector : Editor
 
 		var step = ( maxY - minY ) / ( controls.Count - 1 );
 
-		Undo.RegisterSceneUndo( "Distribute Horizontally" );
+		markUndo( controls, "Distribute Horizontally" );
 
 		for( int i = 0; i < controls.Count; i++ )
 		{

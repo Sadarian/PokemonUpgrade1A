@@ -33,6 +33,13 @@ public class dfRenderData : IDisposable
 	public Material Material { get; set; }
 
 	/// <summary>
+	/// The specific Shader that will be used to render the data in this render
+	/// buffer. Only used when overriding the Shader for the Material, most of 
+	/// the time this property will be NULL.
+	/// </summary>
+	public Shader Shader { get; set; }
+
+	/// <summary>
 	/// The transformation matrix (if any) that needs to be applied to the 
 	/// vertices before rendering. Typically this will be a "local to world" 
 	/// matrix.
@@ -160,6 +167,7 @@ public class dfRenderData : IDisposable
 	{
 
 		Material = null;
+		Shader = null;
 		Transform = Matrix4x4.identity;
 		Checksum = 0x00;
 		Intersection = dfIntersectionType.None;

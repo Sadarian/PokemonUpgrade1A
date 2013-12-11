@@ -11,6 +11,14 @@ using System.Collections;
 using System.Collections.Generic;
 
 /// <summary>
+/// This is a "marker" exception that indicates that DFGUI should abort
+/// the current rendering pass
+/// </summary>
+public class dfAbortRenderingException : System.Exception
+{
+}
+
+/// <summary>
 /// Implements clipboard copy/paste functionality in standalone and web player
 /// deployment targets. <b>NOTE:</b> Because Unity does not provide access to
 /// this functionality, this class uses reflection to obtain access to private

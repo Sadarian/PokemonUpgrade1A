@@ -5,6 +5,7 @@ using System.Linq;
 using System.Collections;
 using System.Collections.Generic;
 
+[AddComponentMenu( "Daikon Forge/Examples/Game Menu/Menu Item" )]
 [Serializable]
 public class DemoMenuItem : DemoItemBase, IComparable<DemoMenuItem>
 {

@@ -30,10 +30,9 @@ public class dfScrollPanelInspector : dfControlInspector
 
 		var control = target as dfScrollPanel;
 
-		EditorGUIUtility.LookLikeControls( 110f );
-		EditorGUI.indentLevel += 1;
+		dfEditorUtil.LabelWidth = 110f;
 
-		GUILayout.Label( "Appearance", "HeaderLabel" );
+		using( dfEditorUtil.BeginGroup( "Appearance" ) )
 		{
 
 			SelectTextureAtlas( "Atlas", control, "Atlas", false, true );
@@ -44,7 +43,14 @@ public class dfScrollPanelInspector : dfControlInspector
 
 			SelectSprite( "Background", control.Atlas, control, "BackgroundSprite", false );
 
-			var scrollPadding = EditPadding( "Padding", control.ScrollPadding );
+			var backgroundColor = EditorGUILayout.ColorField( "Back Color", control.BackgroundColor );
+			if( backgroundColor != control.BackgroundColor )
+			{
+				dfEditorUtil.MarkUndo( control, "Change background color" );
+				control.BackgroundColor = backgroundColor;
+			}
+
+			var scrollPadding = dfEditorUtil.EditPadding( "Padding", control.ScrollPadding );
 			if( !RectOffset.Equals( scrollPadding, control.ScrollPadding ) )
 			{
 				dfEditorUtil.MarkUndo( control, "Change Layout Padding" );
@@ -53,10 +59,10 @@ public class dfScrollPanelInspector : dfControlInspector
 
 		}
 
-		GUILayout.Label( "Layout", "HeaderLabel" );
+		using( dfEditorUtil.BeginGroup( "Layout" ) )
 		{
 
-			var scrollOffset = EditInt2( "Scroll Pos.", "X", "Y", control.ScrollPosition );
+			var scrollOffset = dfEditorUtil.EditInt2( "Scroll Pos.", "X", "Y", control.ScrollPosition );
 			if( scrollOffset != control.ScrollPosition )
 			{
 				dfEditorUtil.MarkUndo( control, "Change Scroll Position" );
@@ -105,7 +111,7 @@ public class dfScrollPanelInspector : dfControlInspector
 					control.FlowDirection = flowDirection;
 				}
 
-				var flowPadding = EditPadding( "Flow Padding", control.FlowPadding );
+				var flowPadding = dfEditorUtil.EditPadding( "Flow Padding", control.FlowPadding );
 				if( !RectOffset.Equals( flowPadding, control.FlowPadding ) )
 				{
 					dfEditorUtil.MarkUndo( control, "Change Layout Padding" );
@@ -116,7 +122,7 @@ public class dfScrollPanelInspector : dfControlInspector
 
 		}
 
-		GUILayout.Label( "Scrolling", "HeaderLabel" );
+		using( dfEditorUtil.BeginGroup( "Scrolling" ) )
 		{
 
 			var scrollWithKeys = EditorGUILayout.Toggle( "Use Arrow Keys", control.ScrollWithArrowKeys );

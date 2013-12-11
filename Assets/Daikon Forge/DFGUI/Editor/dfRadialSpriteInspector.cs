@@ -23,7 +23,7 @@ public class dfRadialSpriteInspector : dfSpriteInspector
 		if( control == null )
 			return false;
 
-		GUILayout.Label( "Fill", "HeaderLabel" );
+		using( dfEditorUtil.BeginGroup( "Fill" ) )
 		{
 
 			var origin = (dfPivotPoint)EditorGUILayout.EnumPopup( "Fill Origin", control.FillOrigin );

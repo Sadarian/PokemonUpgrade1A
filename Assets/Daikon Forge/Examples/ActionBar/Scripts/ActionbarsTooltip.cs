@@ -2,6 +2,7 @@ using UnityEngine;
 using System.Collections;
 using System.Collections.Generic;
 
+[AddComponentMenu( "Daikon Forge/Examples/Actionbar/Tooltip" )]
 public class ActionbarsTooltip : MonoBehaviour 
 {
 
@@ -80,7 +81,10 @@ public class ActionbarsTooltip : MonoBehaviour
 
 	public static void Hide()
 	{
+		// Hide the panel and make sure the collider is 
+		// behind everything else
 		_panel.Hide();
+		_panel.SendToBack();
 	}
 
 	private static void setPosition( Vector2 position )

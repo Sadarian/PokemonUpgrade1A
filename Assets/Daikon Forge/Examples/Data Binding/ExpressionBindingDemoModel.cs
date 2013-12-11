@@ -5,6 +5,7 @@ using System.Collections.Generic;
 
 using UnityEngine;
 
+[AddComponentMenu( "Daikon Forge/Examples/Data Binding/Expression Binding Model" )]
 public class ExpressionBindingDemoModel : MonoBehaviour
 {
 

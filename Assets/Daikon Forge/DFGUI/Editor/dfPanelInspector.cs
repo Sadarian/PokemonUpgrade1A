@@ -25,7 +25,7 @@ public class dfPanelInspector : dfControlInspector
 
 		var control = target as dfPanel;
 
-		GUILayout.Label( "Appearance", "HeaderLabel" );
+		using( dfEditorUtil.BeginGroup( "Appearance" ) )
 		{
 
 			SelectTextureAtlas( "Atlas", control, "Atlas", false, true );
@@ -36,7 +36,14 @@ public class dfPanelInspector : dfControlInspector
 
 			SelectSprite( "Background", control.Atlas, control, "BackgroundSprite", false );
 
-			var clientPadding = EditPadding( "Padding", control.Padding );
+			var backgroundColor = EditorGUILayout.ColorField( "Back Color", control.BackgroundColor );
+			if( backgroundColor != control.BackgroundColor )
+			{
+				dfEditorUtil.MarkUndo( control, "Change background color" );
+				control.BackgroundColor = backgroundColor;
+			}
+
+			var clientPadding = dfEditorUtil.EditPadding( "Padding", control.Padding );
 			if( !RectOffset.Equals( clientPadding, control.Padding ) )
 			{
 				dfEditorUtil.MarkUndo( control, "Change Client Padding" );

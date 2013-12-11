@@ -2,6 +2,7 @@ using UnityEngine;
 using System.Collections;
 using System.Collections.Generic;
 
+[AddComponentMenu( "Daikon Forge/Examples/Actionbar/Drag Cursor" )]
 public class ActionbarsDragCursor : MonoBehaviour 
 {
 

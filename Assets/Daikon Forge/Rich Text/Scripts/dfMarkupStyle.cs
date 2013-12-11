@@ -242,6 +242,11 @@ public struct dfMarkupStyle
 	/// </summary>
 	public Color BackgroundColor;
 
+	/// <summary>
+	/// The opacity level of the rendered elements
+	/// </summary>
+	public float Opacity;
+
 	/// <summary> 
 	/// Indicates whether all whitespace should be preserved. If set to FALSE (the 
 	/// default value) all whitespace will be collapsed.
@@ -294,6 +299,7 @@ public struct dfMarkupStyle
 		WordSpacing = 0;
 		CharacterSpacing = 0;
 		lineHeight = 0;
+		Opacity = 1f;
 
 	}
 
@@ -394,26 +400,34 @@ public struct dfMarkupStyle
 	public static Color ParseColor( string color, Color defaultColor )
 	{
 
+		var result = defaultColor;
+
 		if( color.StartsWith( "#" ) )
 		{
 
 			uint intColor = 0;
 			if( uint.TryParse( color.Substring( 1 ), NumberStyles.HexNumber, null, out intColor ) )
 			{
-				return UIntToColor( intColor );
+				result = UIntToColor( intColor );
 			}
 			else
 			{
-				return Color.red;
+				result = Color.red;
+			}
+
+		}
+		else
+		{
+
+			Color named;
+			if( namedColors.TryGetValue( color.ToLowerInvariant(), out named ) )
+			{
+				result = named;
 			}
 
 		}
 
-		Color named;
-		if( namedColors.TryGetValue( color.ToLowerInvariant(), out named ) )
-			return named;
-
-		return defaultColor;
+		return result;
 
 	}
 

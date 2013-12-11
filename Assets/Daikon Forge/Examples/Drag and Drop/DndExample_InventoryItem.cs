@@ -5,6 +5,7 @@ using System.Text;
 
 using UnityEngine;
 
+[AddComponentMenu( "Daikon Forge/Examples/Drag and Drop/Inventory Item" )]
 public class DndExample_InventoryItem : MonoBehaviour
 {
 

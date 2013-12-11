@@ -1,6 +1,7 @@
 using UnityEngine;
 using System.Collections;
 
+[AddComponentMenu( "Daikon Forge/Examples/Actionbar/Show Spell Window" )]
 public class ShowSpellWindow : MonoBehaviour
 {
 

@@ -27,10 +27,9 @@ public class dfWebSpriteInspector : dfControlInspector
 		if( !isFoldoutExpanded( foldouts, "WebSprite Properties", true ) )
 			return false;
 
-		EditorGUIUtility.LookLikeControls( 120f );
-		EditorGUI.indentLevel += 1;
+		dfEditorUtil.LabelWidth = 120f;
 
-		GUILayout.Label( "General", "HeaderLabel" );
+		using( dfEditorUtil.BeginGroup( "General" ) )
 		{
 
 			var texture = EditorGUILayout.ObjectField( "Texture", control.Texture, typeof( Texture2D ), false ) as Texture2D;
@@ -49,7 +48,7 @@ public class dfWebSpriteInspector : dfControlInspector
 
 		}
 
-		GUILayout.Label( "Web", "HeaderLabel" );
+		using( dfEditorUtil.BeginGroup( "Web" ) )
 		{
 
 			var url = EditorGUILayout.TextField( "URL", control.URL );

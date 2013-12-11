@@ -390,11 +390,11 @@ public class dfTouchEventArgs : dfMouseEventArgs
 	}
 
 	/// <summary>Initializes a new instance of the <see cref="dfTouchEventArgs" /> class.</summary>
-	/// <param name="Source">The <see cref="dfControl"/> that originally received this event notification</param>
-	/// <param name="touch">A List of Touch events active for the Source control. </param>
+	/// <param name="source">The <see cref="dfControl"/> that originally received this event notification</param>
+	/// <param name="touches">A List of Touch events active for the Source control. </param>
 	/// <param name="ray">The <see cref="Ray"/> from the first touch location through the <paramref name="Source"/> control</param>
-	public dfTouchEventArgs( dfControl Source, List<Touch> touches, Ray ray )
-		: this( Source, touches.First(), ray )
+	public dfTouchEventArgs( dfControl source, List<Touch> touches, Ray ray )
+		: this( source, touches.First(), ray )
 	{
 		this.Touches = touches;
 	}

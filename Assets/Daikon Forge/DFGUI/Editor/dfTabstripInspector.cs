@@ -31,10 +31,9 @@ public class dfTabstripInspector : dfControlInspector
 		if( control == null )
 			return false;
 
-		EditorGUIUtility.LookLikeControls( 110f );
-		EditorGUI.indentLevel += 1;
+		dfEditorUtil.LabelWidth = 110f;
 
-		GUILayout.Label( "Appearance", "HeaderLabel" );
+		using( dfEditorUtil.BeginGroup( "Appearance" ) )
 		{
 
 			SelectTextureAtlas( "Atlas", control, "Atlas", false, false );
@@ -45,7 +44,7 @@ public class dfTabstripInspector : dfControlInspector
 
 			SelectSprite( "Background", control.Atlas, control, "BackgroundSprite", false );
 
-			var flowPadding = EditPadding( "Tab Padding", control.LayoutPadding );
+			var flowPadding = dfEditorUtil.EditPadding( "Tab Padding", control.LayoutPadding );
 			if( !RectOffset.Equals( flowPadding, control.LayoutPadding ) )
 			{
 				dfEditorUtil.MarkUndo( control, "Change Layout Padding" );
@@ -54,7 +53,7 @@ public class dfTabstripInspector : dfControlInspector
 
 		}
 
-		GUILayout.Label( "Behavior", "HeaderLabel" );
+		using( dfEditorUtil.BeginGroup( "Behavior" ) )
 		{
 
 			var allowKeyNav = EditorGUILayout.Toggle( "Keyboard Nav.", control.AllowKeyboardNavigation );

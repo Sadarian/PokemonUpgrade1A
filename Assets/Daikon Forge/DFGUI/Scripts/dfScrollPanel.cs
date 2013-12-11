@@ -8,7 +8,7 @@ using System.Collections;
 using System.Collections.Generic;
 
 /// <summary>
-/// Implements a scrollable label container
+/// Implements a scrollable control container
 /// </summary>
 [Serializable]
 [ExecuteInEditMode]
@@ -51,6 +51,9 @@ public class dfScrollPanel : dfControl
 
 	[SerializeField]
 	protected string backgroundSprite;
+
+	[SerializeField]
+	protected Color32 backgroundColor = UnityEngine.Color.white;
 
 	[SerializeField]
 	protected bool autoReset = true;
@@ -127,7 +130,7 @@ public class dfScrollPanel : dfControl
 	}
 
 	/// <summary>
-	/// The <see cref="dfAtlas">Texture Atlas</see> containing the images used by this label
+	/// The <see cref="dfAtlas">Texture Atlas</see> containing the images used by this control
 	/// </summary>
 	public dfAtlas Atlas
 	{
@@ -155,7 +158,7 @@ public class dfScrollPanel : dfControl
 
 	/// <summary>
 	/// The name of the image in the <see cref="Atlas"/> that will be used to 
-	/// render the background of this label
+	/// render the background of this control
 	/// </summary>
 	public string BackgroundSprite
 	{
@@ -165,6 +168,22 @@ public class dfScrollPanel : dfControl
 			if( value != backgroundSprite )
 			{
 				backgroundSprite = value;
+				Invalidate();
+			}
+		}
+	}
+
+	/// <summary>
+	/// Gets or set the color that will be applied to the background sprite
+	/// </summary>
+	public Color32 BackgroundColor
+	{
+		get { return backgroundColor; }
+		set
+		{
+			if( !Color32.Equals( value, backgroundColor ) )
+			{
+				backgroundColor = value;
 				Invalidate();
 			}
 		}
@@ -263,7 +282,7 @@ public class dfScrollPanel : dfControl
 	}
 
 	/// <summary>
-	/// Gets or sets the amount of padding that will be applied to each label
+	/// Gets or sets the amount of padding that will be applied to each control
 	/// when arranging child controls using AutoLayout
 	/// </summary>
 	public RectOffset FlowPadding
@@ -431,7 +450,7 @@ public class dfScrollPanel : dfControl
 
 		base.Update();
 
-		if( useScrollMomentum && !isMouseDown )
+		if( useScrollMomentum && !isMouseDown && scrollMomentum.sqrMagnitude > float.Epsilon )
 		{
 			ScrollPosition += scrollMomentum;
 		}
@@ -622,7 +641,7 @@ public class dfScrollPanel : dfControl
 	protected internal override void OnMouseMove( dfMouseEventArgs args )
 	{
 
-		if( args is dfTouchEventArgs || ( Application.isEditor && isMouseDown ) )
+		if( args is dfTouchEventArgs || isMouseDown )
 		{
 
 			if( !args.Used && ( args.Position - touchStartPosition ).magnitude > 5 )
@@ -706,6 +725,10 @@ public class dfScrollPanel : dfControl
 		{
 			AutoArrange();
 		}
+		else
+		{
+			updateScrollbars();
+		}
 
 	}
 
@@ -723,7 +746,7 @@ public class dfScrollPanel : dfControl
 
 		renderData.Material = Atlas.Material;
 
-		var color = ApplyOpacity( IsEnabled ? this.color : this.disabledColor );
+		var color = ApplyOpacity( this.BackgroundColor );
 		var options = new dfSprite.RenderOptions()
 		{
 			atlas = atlas,
@@ -853,9 +876,9 @@ public class dfScrollPanel : dfControl
 	}
 
 	/// <summary>
-	/// Scrolls the specified child label into view
+	/// Scrolls the specified child control into view
 	/// </summary>
-	/// <param name="label">The child label to scroll into view</param>
+	/// <param name="control">The child control to scroll into view</param>
 	public void ScrollIntoView( dfControl control )
 	{
 
@@ -1156,7 +1179,7 @@ public class dfScrollPanel : dfControl
 			var child = controls[ i ];
 
 			// Skip calculation of child controls that are not visible.
-			// NOTE: Only done during runtime, as this label is "live"
+			// NOTE: Only done during runtime, as this control is "live"
 			// in the editor and we don't want to change the layout 
 			// during design time. Everything will be correct when running.
 			if( Application.isPlaying && !child.IsVisible )
@@ -1205,7 +1228,7 @@ public class dfScrollPanel : dfControl
 
 	}
 
-	#region Child label events
+	#region Child control events
 
 	private void attachEvents( dfControl control )
 	{

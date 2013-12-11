@@ -4,6 +4,7 @@ using System.Collections;
 
 using UnityEngine;
 
+[AddComponentMenu( "Daikon Forge/Examples/Actionbar/Spell Inventory" )]
 [ExecuteInEditMode]
 public class SpellInventory : MonoBehaviour
 {

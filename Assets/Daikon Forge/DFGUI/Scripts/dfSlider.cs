@@ -68,6 +68,9 @@ public class dfSlider : dfControl
 	[SerializeField]
 	protected Vector2 thumbOffset = Vector2.zero;
 
+	[SerializeField]
+	protected bool rightToLeft = false;
+
 	#endregion
 
 	#region Public properties 
@@ -320,6 +323,24 @@ public class dfSlider : dfControl
 		}
 	}
 
+	/// <summary>
+	/// Gets or sets whether the thumb position will be aligned
+	/// to the right of the control when the Value is set to the
+	/// minimum, or aligned to the left (default)
+	/// </summary>
+	public bool RightToLeft
+	{
+		get { return this.rightToLeft; }
+		set
+		{
+			if( value != this.rightToLeft )
+			{
+				this.rightToLeft = value;
+				updateValueIndicators( this.rawValue );
+			}
+		}
+	}
+
 	#endregion
 
 	#region Event-handling and notification 
@@ -526,7 +547,13 @@ public class dfSlider : dfControl
 			var distance = ( ( rawValue - minValue ) / valueRange ) * dir.magnitude;
 
 			var offset = (Vector3)thumbOffset * PixelsToUnits();
+
 			var thumbPos = endPoints[ 0 ] + dir.normalized * distance + offset;
+			if( orientation == dfControlOrientation.Vertical || rightToLeft )
+			{
+				// Vertical sliders start at bottom
+				thumbPos = endPoints[ 1 ] + -dir.normalized * distance + offset;
+			}
 
 			thumb.Pivot = dfPivotPoint.MiddleCenter;
 			thumb.transform.position = thumbPos;
@@ -587,6 +614,11 @@ public class dfSlider : dfControl
 		var closest = closestPoint( start, end, hit, true );
 		var lerp = ( closest - start ).magnitude / ( end - start ).magnitude;
 		var rawValue = minValue + ( maxValue - minValue ) * lerp;
+
+		if( orientation == dfControlOrientation.Vertical || rightToLeft )
+		{
+			rawValue = maxValue - rawValue;
+		}
 
 		return rawValue;
 

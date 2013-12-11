@@ -25,6 +25,9 @@ public class dfPanel : dfControl
 	protected string backgroundSprite;
 
 	[SerializeField]
+	protected Color32 backgroundColor = UnityEngine.Color.white;
+
+	[SerializeField]
 	protected RectOffset padding = new RectOffset();
 
 	#endregion
@@ -71,6 +74,22 @@ public class dfPanel : dfControl
 			if( value != backgroundSprite )
 			{
 				backgroundSprite = value;
+				Invalidate();
+			}
+		}
+	}
+
+	/// <summary>
+	/// Gets or set the color that will be applied to the background sprite
+	/// </summary>
+	public Color32 BackgroundColor
+	{
+		get { return backgroundColor; }
+		set
+		{
+			if( !Color32.Equals( value, backgroundColor ) )
+			{
+				backgroundColor = value;
 				Invalidate();
 			}
 		}
@@ -165,7 +184,7 @@ public class dfPanel : dfControl
 
 		renderData.Material = Atlas.Material;
 
-		var color = ApplyOpacity( IsEnabled ? this.color : this.disabledColor );
+		var color = ApplyOpacity( this.BackgroundColor );
 		var options = new dfSprite.RenderOptions()
 		{
 			atlas = atlas,

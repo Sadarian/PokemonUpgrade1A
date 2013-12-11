@@ -3,10 +3,11 @@ using System.Collections;
 
 using UnityEngine;
 
+[AddComponentMenu( "Daikon Forge/Examples/General/Debug Render Info" )]
 public class DebugRenderInfo : MonoBehaviour
 {
 
-	public float updateInterval = 0.1F;
+	public float interval = 0.5F;
 
 	private dfLabel info;
 	private dfGUIManager view;
@@ -24,6 +25,8 @@ public class DebugRenderInfo : MonoBehaviour
 			throw new InvalidProgramException( "No Label component found" );
 		}
 
+		info.Text = "";
+
 		view = info.GetManager();
 
 	}
@@ -34,7 +37,7 @@ public class DebugRenderInfo : MonoBehaviour
 		frameCount += 1;
 
 		var elapsed = Time.realtimeSinceStartup - lastUpdate;
-		if( elapsed < updateInterval )
+		if( elapsed < interval )
 			return;
 
 		lastUpdate = Time.realtimeSinceStartup;
@@ -49,18 +52,18 @@ public class DebugRenderInfo : MonoBehaviour
 		var screenSizeFormat = string.Format( "{0}x{1}", (int)screenSize.x, (int)screenSize.y );
 #endif
 
-		//var totalControls =
-		//    view.GetComponentsInChildren<dfControl>()
-		//    .Length;
-
 		var statusFormat = @"Screen : {0}, DrawCalls: {1}, Triangles: {2}, Mem: {3:F0}MB, FPS: {4:F0}";
+
+		var totalMemory = Profiler.supported
+			? Profiler.GetMonoUsedSize() / 1048576f
+			: GC.GetTotalMemory( false ) / 1048576f;
 
 		var status = string.Format(
 			statusFormat,
 			screenSizeFormat,
 			view.TotalDrawCalls,
 			view.TotalTriangles,
-			GC.GetTotalMemory( false ) / 1048576f,
+			totalMemory,
 			fps
 		);
 

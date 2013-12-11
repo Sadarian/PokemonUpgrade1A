@@ -2,7 +2,8 @@ using UnityEngine;
 using System.Collections;
 using System.Collections.Generic;
 
-public class TouchDragSourceEvents : MonoBehaviour 
+[AddComponentMenu( "Daikon Forge/Examples/Touch/Drag Source Events" )]
+public class TouchDragSourceEvents : MonoBehaviour
 {
 
 	private dfLabel _label;

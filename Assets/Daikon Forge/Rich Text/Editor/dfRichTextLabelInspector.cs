@@ -28,10 +28,9 @@ public class dfRichTextLabelInspector : dfControlInspector
 
 		var control = target as dfRichTextLabel;
 
-		EditorGUIUtility.LookLikeControls( 120f );
-		EditorGUI.indentLevel += 1;
+		dfEditorUtil.LabelWidth = 120f;
 
-		GUILayout.Label( "Defaults", "HeaderLabel" );
+		using( dfEditorUtil.BeginGroup( "Defaults" ) )
 		{
 
 			inspectFont( control );
@@ -53,7 +52,7 @@ public class dfRichTextLabelInspector : dfControlInspector
 
 		}
 
-		GUILayout.Label( "Appearance", "HeaderLabel" );
+		using( dfEditorUtil.BeginGroup( "Appearance" ) )
 		{
 
 			var fontSize = EditorGUILayout.IntField( "Font Size", control.FontSize );
@@ -100,7 +99,7 @@ public class dfRichTextLabelInspector : dfControlInspector
 
 		}
 
-		GUILayout.Label( "Alignment", "HeaderLabel" );
+		using( dfEditorUtil.BeginGroup( "Alignment" ) )
 		{
 
 			var align = (dfMarkupTextAlign)EditorGUILayout.EnumPopup( "Text Align", control.TextAlignment );
@@ -112,7 +111,7 @@ public class dfRichTextLabelInspector : dfControlInspector
 
 		}
 
-		GUILayout.Label( "Scrolling", "HeaderLabel" );
+		using( dfEditorUtil.BeginGroup( "Scrolling" ) )
 		{
 
 			var allowScrolling = EditorGUILayout.Toggle( "Allow Scroll", control.AllowScrolling );
@@ -124,7 +123,7 @@ public class dfRichTextLabelInspector : dfControlInspector
 
 			GUI.enabled = allowScrolling;
 
-			var scrollOffset = EditInt2( "Scroll Pos.", "X", "Y", control.ScrollPosition );
+			var scrollOffset = dfEditorUtil.EditInt2( "Scroll Pos.", "X", "Y", control.ScrollPosition );
 			if( scrollOffset != control.ScrollPosition )
 			{
 				dfEditorUtil.MarkUndo( control, "Change Scroll Position" );
@@ -157,7 +156,7 @@ public class dfRichTextLabelInspector : dfControlInspector
 		}
 
 		var showDialog = false;
-		GUILayout.Label( "Text", "HeaderLabel" );
+		using( dfEditorUtil.BeginGroup( "Text" ) )
 		{
 
 			GUI.SetNextControlName( "Text" );
@@ -168,10 +167,10 @@ public class dfRichTextLabelInspector : dfControlInspector
 				control.Text = text;
 			}
 
-			if( GUILayout.Button( "Open Text Editor" ) )
-			{
-				showDialog = true;
-			}
+			//if( GUILayout.Button( "Open Text Editor" ) )
+			//{
+			//    showDialog = true;
+			//}
 
 		}
 

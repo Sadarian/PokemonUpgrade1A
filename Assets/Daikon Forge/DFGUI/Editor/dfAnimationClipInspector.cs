@@ -165,15 +165,14 @@ public class dfAnimationClipInspector : Editor
 
 		var clip = target as dfAnimationClip;
 
-		EditorGUIUtility.LookLikeControls( 110f );
-		EditorGUI.indentLevel += 1;
+		dfEditorUtil.LabelWidth = 110f;
 
-		GUILayout.Label( "Frame Source", "HeaderLabel" );
+		using( dfEditorUtil.BeginGroup( "Frame Source" ) )
 		{
 			SelectTextureAtlas( "Atlas", clip );
 		}
 
-		GUILayout.Label( "Frames", "HeaderLabel" );
+		using( dfEditorUtil.BeginGroup( "Frames" ) )
 		{
 
 			//EditorGUILayout.HelpBox( "\n\nDrag and drop textures here to add them to the list of animation frames\n\n", MessageType.Info );
@@ -235,12 +234,14 @@ public class dfAnimationClipInspector : Editor
 					var index = i;
 					dfSpriteSelectionDialog.Show( "Select Sprite", animation.Atlas, value, ( spriteName ) =>
 					{
+						dfEditorUtil.MarkUndo( animation, "Select animation frame" );
 						sprites[ index ] = spriteName;
 					} );
 				}
 
 				if( GUILayout.Button( "^", "minibutton", GUILayout.Width( 24 ) ) && i > 0 )
 				{
+					dfEditorUtil.MarkUndo( animation, "Reorder animation frames" );
 					var temp = sprites[ i - 1 ];
 					sprites[ i - 1 ] = sprites[ i ];
 					sprites[ i ] = temp;
@@ -248,6 +249,7 @@ public class dfAnimationClipInspector : Editor
 
 				if( GUILayout.Button( "v", "minibutton", GUILayout.Width( 24 ) ) && i < sprites.Count - 1 )
 				{
+					dfEditorUtil.MarkUndo( animation, "Reorder animation frames" );
 					var temp = sprites[ i + 1 ];
 					sprites[ i + 1 ] = sprites[ i ];
 					sprites[ i ] = temp;
@@ -255,6 +257,7 @@ public class dfAnimationClipInspector : Editor
 
 				if( GUILayout.Button( "x", "minibutton", GUILayout.Width( 24 ) ) )
 				{
+					dfEditorUtil.MarkUndo( animation, "Remove animation frame" );
 					sprites.RemoveAt( i );
 					collectionModified = true;
 				}
@@ -287,12 +290,13 @@ public class dfAnimationClipInspector : Editor
 
 		if( showDialog )
 		{
-			dfEditorUtil.DelayedInvoke( (Action)( () =>
+			dfEditorUtil.DelayedInvoke( (System.Action)( () =>
 			{
 				dfSpriteSelectionDialog.Show( "Select Sprite", animation.Atlas, null, ( selected ) =>
 				{
 					if( !string.IsNullOrEmpty( selected ) )
 					{
+						dfEditorUtil.MarkUndo( animation.gameObject, "Add new animation frame" );
 						sprites.Add( selected );
 					}
 				} );
@@ -311,6 +315,8 @@ public class dfAnimationClipInspector : Editor
 			EditorUtility.DisplayDialog( "Auto-Fill Animation Clip", "Unable to determine a valid sprite prefix based on the name " + spriteName, "CANCEL" );
 			return;
 		}
+
+		dfEditorUtil.MarkUndo( animation, "Auto-fill animation frames" );
 
 		var results = new List<string>();
 

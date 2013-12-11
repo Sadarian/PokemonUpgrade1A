@@ -19,11 +19,6 @@ public class TweenInspectorBase : Editor
 
 		var tween = target as dfTweenComponentBase;
 
-		dfEditorUtil.ComponentCopyButton( target );
-
-		EditorGUIUtility.LookLikeControls( 100f );
-		EditorGUI.indentLevel += 1;
-
 		var tweenTarget = tween.Target;
 		if( tweenTarget == null )
 		{
@@ -40,7 +35,7 @@ public class TweenInspectorBase : Editor
 			tweenTarget.Component = getDefaultComponent();
 		}
 		
-		GUILayout.Label( "General", "HeaderLabel" );
+		using( dfEditorUtil.BeginGroup( "General" ) )
 		{
 			var name = EditorGUILayout.TextField( "Name", tween.TweenName );
 			if( !string.Equals( name, tween.TweenName ) )
@@ -50,7 +45,7 @@ public class TweenInspectorBase : Editor
 			}
 		}
 
-		GUILayout.Label( "Property", "HeaderLabel" );
+		using( dfEditorUtil.BeginGroup( "Property" ) )
 		{
 
 			var tweenType =
@@ -74,7 +69,7 @@ public class TweenInspectorBase : Editor
 			return;
 		}
 
-		GUILayout.Label( "Animation", "HeaderLabel" );
+		using( dfEditorUtil.BeginGroup( "Animation" ) )
 		{
 
 			EditorGUI.BeginChangeCheck();
@@ -121,7 +116,7 @@ public class TweenInspectorBase : Editor
 
 		var serialized = new SerializedObject( target );
 
-		GUILayout.Label( "Start Value", "HeaderLabel" );
+		using( dfEditorUtil.BeginGroup( "Start Value" ) )
 		{
 
 			EditorGUI.BeginChangeCheck();
@@ -182,7 +177,7 @@ public class TweenInspectorBase : Editor
 
 		}
 
-		GUILayout.Label( "End Value", "HeaderLabel" );
+		using( dfEditorUtil.BeginGroup( "End Value" ) )
 		{
 
 			EditorGUI.BeginChangeCheck();
@@ -254,7 +249,7 @@ public class TweenInspectorBase : Editor
 		if( !Application.isPlaying )
 			return;
 
-		GUILayout.Label( "Debug", "HeaderLabel" );
+		using( dfEditorUtil.BeginGroup( "Debug" ) )
 		EditorGUILayout.BeginHorizontal();
 		{
 			GUILayout.Space( dfEditorUtil.LabelWidth + 5 );

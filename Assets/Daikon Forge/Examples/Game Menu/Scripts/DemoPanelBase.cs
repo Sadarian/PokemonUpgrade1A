@@ -5,6 +5,7 @@ using System.Text;
 
 using UnityEngine;
 
+[AddComponentMenu( "Daikon Forge/Examples/Game Menu/Panel Base Class" )]
 public abstract class DemoPanelBase : MonoBehaviour
 {
 

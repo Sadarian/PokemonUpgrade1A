@@ -27,10 +27,9 @@ public class dfSliderInspector : dfControlInspector
 		if( !isFoldoutExpanded( foldouts, "Slider Properties", true ) )
 			return false;
 
-		EditorGUIUtility.LookLikeControls( 100f );
-		EditorGUI.indentLevel += 1;
+		dfEditorUtil.LabelWidth = 100f;
 
-		GUILayout.Label( "Appearance", "HeaderLabel" );
+		using( dfEditorUtil.BeginGroup( "Appearance" ) )
 		{
 
 			SelectTextureAtlas( "Atlas", control, "Atlas", false, true );
@@ -45,8 +44,15 @@ public class dfSliderInspector : dfControlInspector
 
 		}
 
-		GUILayout.Label( "Behavior", "HeaderLabel" );
+		using( dfEditorUtil.BeginGroup( "Behavior" ) )
 		{
+
+			var rtl = EditorGUILayout.Toggle( "Right to Left", control.RightToLeft );
+			if( rtl != control.RightToLeft )
+			{
+				dfEditorUtil.MarkUndo( control, "Switch Right To Left" );
+				control.RightToLeft = rtl;
+			}
 
 			var min = EditorGUILayout.FloatField( "Min Value", control.MinValue );
 			if( min != control.MinValue )
@@ -85,7 +91,7 @@ public class dfSliderInspector : dfControlInspector
 
 		}
 
-		GUILayout.Label( "Controls", "HeaderLabel" );
+		using( dfEditorUtil.BeginGroup( "Controls" ) )
 		{
 
 			var thumb = EditorGUILayout.ObjectField( "Thumb", control.Thumb, typeof( dfControl ), true ) as dfControl;
@@ -105,7 +111,7 @@ public class dfSliderInspector : dfControlInspector
 			if( thumb != null )
 			{
 
-				var thumbPadding = EditInt2( "Offset", "X", "Y", control.ThumbOffset );
+				var thumbPadding = dfEditorUtil.EditInt2( "Offset", "X", "Y", control.ThumbOffset );
 				if( !RectOffset.Equals( thumbPadding, control.ThumbOffset ) )
 				{
 					dfEditorUtil.MarkUndo( control, "Change thumb Offset" );
@@ -143,7 +149,7 @@ public class dfSliderInspector : dfControlInspector
 
 				}
 
-				var padding = EditPadding( "Padding", control.FillPadding );
+				var padding = dfEditorUtil.EditPadding( "Padding", control.FillPadding );
 				if( padding != control.FillPadding )
 				{
 					dfEditorUtil.MarkUndo( control, "Change Slider Padding" );

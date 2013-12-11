@@ -2,6 +2,7 @@ using UnityEngine;
 using System.Collections;
 using System.Collections.Generic;
 
+[AddComponentMenu( "Daikon Forge/Examples/Color Picker/Color Field Selector" )]
 public class ColorFieldSelector : MonoBehaviour
 {
 

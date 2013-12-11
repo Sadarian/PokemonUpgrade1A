@@ -3,6 +3,7 @@ using UnityEngine;
 using System.Collections;
 using System.Collections.Generic;
 
+[AddComponentMenu( "Daikon Forge/Examples/Tooltip/Floating Tooltip" )]
 public class DemoFloatingTooltip : MonoBehaviour 
 {
 

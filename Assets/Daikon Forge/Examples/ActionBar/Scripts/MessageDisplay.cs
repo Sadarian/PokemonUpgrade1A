@@ -4,6 +4,7 @@ using System.Collections.Generic;
 
 using UnityEngine;
 
+[AddComponentMenu( "Daikon Forge/Examples/Actionbar/Message Scroller" )]
 public class MessageDisplay : MonoBehaviour
 {
 

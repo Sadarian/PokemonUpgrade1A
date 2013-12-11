@@ -279,9 +279,17 @@ public class dfTabContainer : dfControl
 
 		for( int i = 0; i < controls.Count; i++ )
 		{
-			var child = controls[ i ];
-			child.Size = pageSize;
-			child.RelativePosition = pagePosition;
+
+			// A TabContainer may contain controls other than Tab Pages,
+			// for instance when a dropdown list displays its popup
+			// menu. Do not auto-arrange anything but dfPanel instances
+			var child = controls[ i ] as dfPanel;
+			if( child != null )
+			{
+				child.Size = pageSize;
+				child.RelativePosition = pagePosition;
+			}
+
 		}
 
 	}

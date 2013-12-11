@@ -27,10 +27,9 @@ public class dfScrollbarInspector : dfControlInspector
 		if( !isFoldoutExpanded( foldouts, "Scrollbar Properties", true ) )
 			return false;
 
-		EditorGUIUtility.LookLikeControls( 100f );
-		EditorGUI.indentLevel += 1;
+		dfEditorUtil.LabelWidth = 100f;
 
-		GUILayout.Label( "Appearance", "HeaderLabel" );
+		using( dfEditorUtil.BeginGroup( "Appearance" ) )
 		{
 
 			SelectTextureAtlas( "Atlas", control, "Atlas", false, true );
@@ -44,7 +43,7 @@ public class dfScrollbarInspector : dfControlInspector
 
 		}
 
-		GUILayout.Label( "Behavior", "HeaderLabel" );
+		using( dfEditorUtil.BeginGroup( "Behavior" ) )
 		{
 
 			var min = EditorGUILayout.FloatField( "Min Value", control.MinValue );
@@ -98,7 +97,7 @@ public class dfScrollbarInspector : dfControlInspector
 
 		}
 
-		GUILayout.Label( "Controls", "HeaderLabel" );
+		using( dfEditorUtil.BeginGroup( "Controls" ) )
 		{
 
 			var track = EditorGUILayout.ObjectField( "Track", control.Track, typeof( dfControl ), true ) as dfControl;
@@ -160,14 +159,14 @@ public class dfScrollbarInspector : dfControlInspector
 			if( thumb != null )
 			{
 
-				var minThumb = EditInt2( "Min. Size", "Width", "Height", thumb.MinimumSize );
+				var minThumb = dfEditorUtil.EditInt2( "Min. Size", "Width", "Height", thumb.MinimumSize );
 				if( minThumb != thumb.MinimumSize )
 				{
 					dfEditorUtil.MarkUndo( thumb, "Change Minimum Size" );
 					thumb.MinimumSize = minThumb;
 				}
 
-				var thumbPadding = EditPadding( "Padding", control.ThumbPadding );
+				var thumbPadding = dfEditorUtil.EditPadding( "Padding", control.ThumbPadding );
 				if( !RectOffset.Equals( thumbPadding, control.ThumbPadding ) )
 				{
 					dfEditorUtil.MarkUndo( control, "Change thumb Padding" );

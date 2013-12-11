@@ -5,6 +5,7 @@ using System.Linq;
 using System.Collections;
 using System.Collections.Generic;
 
+[AddComponentMenu( "Daikon Forge/Examples/Game Menu/Demo Item Base Class" )]
 [Serializable]
 public class DemoItemBase : MonoBehaviour, IComparable<DemoItemBase>
 {

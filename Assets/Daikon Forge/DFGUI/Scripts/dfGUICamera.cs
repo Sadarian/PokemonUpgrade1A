@@ -15,8 +15,6 @@ using System.Collections.Generic;
 public class dfGUICamera : MonoBehaviour
 {
 
-	// http://answers.unity3d.com/questions/217941/onenable-awake-start-order.html
-
 	public void Awake() { }
 	public void OnEnable() { }
 
@@ -24,6 +22,7 @@ public class dfGUICamera : MonoBehaviour
 	{
 
 		camera.transparencySortMode = TransparencySortMode.Orthographic;
+		camera.useOcclusionCulling = false;
 
 		// Disable built-in OnMouse* messages - http://unity3d.com/unity/whats-new/unity-4.1
 		// The built-in SendMouseEvents() functionality throws errors if you have methods

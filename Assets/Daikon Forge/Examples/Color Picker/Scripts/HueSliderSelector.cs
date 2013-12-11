@@ -2,6 +2,7 @@ using UnityEngine;
 using System.Collections;
 using System.Collections.Generic;
 
+[AddComponentMenu( "Daikon Forge/Examples/Color Picker/Hue Slider" )]
 public class HueSliderSelector : MonoBehaviour 
 {
 
@@ -17,7 +18,7 @@ public class HueSliderSelector : MonoBehaviour
 				this.hue = value;
 				if( slider != null )
 				{
-					slider.Value = ( 1f - HSBColor.FromColor( value ).h );
+					slider.Value = HSBColor.FromColor( value ).h;
 				}
 			}
 		}
@@ -32,7 +33,7 @@ public class HueSliderSelector : MonoBehaviour
 
 	public void OnValueChanged( dfControl control, float value )
 	{
-		this.hue = new HSBColor( 1f - value, 1, 1, 1 ).ToColor();
+		this.hue = new HSBColor( value, 1, 1, 1 ).ToColor();
 	}
 
 }

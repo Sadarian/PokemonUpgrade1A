@@ -5,6 +5,7 @@ using System.Linq;
 using System.Collections;
 using System.Collections.Generic;
 
+[AddComponentMenu( "Daikon Forge/Examples/Game Menu/Leaderboard List Item" )]
 public class DemoLeaderboardListItem : MonoBehaviour
 {
 

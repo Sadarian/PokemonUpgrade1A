@@ -72,7 +72,7 @@ public class dfMarkupParser
 		try
 		{
 
-			Profiler.BeginSample( "Parse markup" );
+			//@Profiler.BeginSample( "Parse markup" );
 
 			parserInstance.owner = owner;
 
@@ -83,7 +83,7 @@ public class dfMarkupParser
 		}
 		finally
 		{
-			Profiler.EndSample();
+			//@Profiler.EndSample();
 		}
 
 	}
@@ -101,7 +101,7 @@ public class dfMarkupParser
 	private dfList<dfMarkupElement> parseMarkup( string source )
 	{
 
-		Profiler.BeginSample( "Parse markup: Tokenize" );
+		//@Profiler.BeginSample( "Parse markup: Tokenize" );
 
 		var tokens = new Queue<dfMarkupElement>();
 
@@ -136,7 +136,7 @@ public class dfMarkupParser
 			tokens.Enqueue( textElement );
 		}
 
-		Profiler.EndSample();
+		//@Profiler.EndSample();
 
 		return processTokens( tokens );
 
@@ -145,7 +145,7 @@ public class dfMarkupParser
 	private dfList<dfMarkupElement> processTokens( Queue<dfMarkupElement> tokens )
 	{
 
-		Profiler.BeginSample( "Parse markup: Process tokens" );
+		//@Profiler.BeginSample( "Parse markup: Process tokens" );
 
 		var elements = dfList<dfMarkupElement>.Obtain();
 
@@ -162,7 +162,7 @@ public class dfMarkupParser
 			}
 		}
 
-		Profiler.EndSample();
+		//@Profiler.EndSample();
 
 		return elements;
 

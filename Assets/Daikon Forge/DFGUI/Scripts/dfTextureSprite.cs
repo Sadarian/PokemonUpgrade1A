@@ -58,6 +58,7 @@ public class dfTextureSprite : dfControl
 
 	#region Private instance variables 
 
+	private bool createdRuntimeMaterial = false;
 	private Material renderMaterial = null;
 
 	#endregion
@@ -99,9 +100,13 @@ public class dfTextureSprite : dfControl
 		{
 			if( value != this.material )
 			{
+
+				disposeCreatedMaterial();
+
 				renderMaterial = null;
 				this.material = value;
 				Invalidate();
+
 			}
 		}
 	}
@@ -208,6 +213,8 @@ public class dfTextureSprite : dfControl
 
 		base.OnDisable();
 
+		disposeCreatedMaterial();
+
 		if( Application.isPlaying && renderMaterial != null )
 		{
 			DestroyImmediate( renderMaterial );
@@ -280,6 +287,18 @@ public class dfTextureSprite : dfControl
 	#endregion
 
 	#region Private utility methods 
+
+	private void disposeCreatedMaterial()
+	{
+
+		if( createdRuntimeMaterial )
+		{
+			DestroyImmediate( this.material );
+			this.material = null;
+			createdRuntimeMaterial = false;
+		}
+
+	}
 
 	private void rebuildUV( dfRenderData renderData )
 	{
@@ -383,6 +402,8 @@ public class dfTextureSprite : dfControl
 			hideFlags = HideFlags.DontSave,
 			mainTexture = this.texture
 		};
+
+		createdRuntimeMaterial = true;
 
 	}
 

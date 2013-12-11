@@ -6,6 +6,7 @@ using System.Threading;
 using System.Collections;
 using System.Collections.Generic;
 
+[AddComponentMenu( "Daikon Forge/Examples/Game Menu/Leaderboard Grid" )]
 [Serializable]
 public class DemoLeaderboardGrid : MonoBehaviour
 {
@@ -101,19 +102,15 @@ public class DemoLeaderboardGrid : MonoBehaviour
 		for( int i = 0; i < Items.Count; i++ )
 		{
 
-			yield return null;
-
 			var item = Items[ i ];
 			item.Rank = i + 1;
 
-			var rowGO = dfPoolManager.Pool[ "Leaderboard" ].Spawn( false );
+			var rowGO = dfPoolManager.Pool[ "Leaderboard" ].Spawn( true );
 			rowGO.hideFlags = HideFlags.DontSave;
-			rowGO.transform.parent = container.transform;
-
-			rowGO.gameObject.SetActive( true );
 
 			var row = rowGO.GetComponent<dfControl>();
-			row.ZOrder = rows.Count;
+			row.ZOrder = i;
+			container.AddControl( row );
 			row.Show();
 
 			rows.Add( row );
@@ -130,6 +127,8 @@ public class DemoLeaderboardGrid : MonoBehaviour
 			{
 				row.Focus();
 			}
+
+			yield return null;
 
 		}
 

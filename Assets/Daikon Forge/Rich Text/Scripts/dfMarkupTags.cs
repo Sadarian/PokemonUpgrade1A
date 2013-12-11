@@ -147,7 +147,9 @@ public class dfMarkupTag : dfMarkupElement
 		var colorAttribute = findAttribute( "color" );
 		if( colorAttribute != null )
 		{
-			style.Color = dfMarkupStyle.ParseColor( colorAttribute.Value, style.Color );
+			var color = dfMarkupStyle.ParseColor( colorAttribute.Value, style.Color );
+			color.a = style.Opacity;
+			style.Color = color;
 		}
 
 		var alignAttribute = findAttribute( "align", "text-align" );
@@ -178,6 +180,7 @@ public class dfMarkupTag : dfMarkupElement
 		if( backgroundAttribute != null )
 		{
 			style.BackgroundColor = dfMarkupStyle.ParseColor( backgroundAttribute.Value, Color.clear );
+			style.BackgroundColor.a = style.Opacity;
 		}
 
 		return style;
@@ -600,7 +603,7 @@ public class dfMarkupTagParagraph : dfMarkupTag
 
 		dfMarkupBox paragraphBox = null;
 
-		if( style.BackgroundColor.a > 0.1f )
+		if( style.BackgroundColor.a > 0.005f )
 		{
 
 			var spriteBox = new dfMarkupBoxSprite( this, dfMarkupDisplayType.block, style );
@@ -1004,7 +1007,9 @@ public class dfMarkupTagImg : dfMarkupTag
 		var fontColorAttribute = findAttribute( "color" );
 		if( fontColorAttribute != null )
 		{
-			style.Color = dfMarkupStyle.ParseColor( fontColorAttribute.Value, Color.red );
+			var color = dfMarkupStyle.ParseColor( fontColorAttribute.Value, Owner.Color );
+			color.a = style.Opacity;
+			style.Color = color;
 		}
 
 		return style;
@@ -1084,6 +1089,7 @@ public class dfMarkupTagFont : dfMarkupTag
 		if( fontColorAttribute != null )
 		{
 			style.Color = dfMarkupStyle.ParseColor( fontColorAttribute.Value, Color.red );
+			style.Color.a = style.Opacity;
 		}
 
 		var fontStyleAttribute = findAttribute( "style" );

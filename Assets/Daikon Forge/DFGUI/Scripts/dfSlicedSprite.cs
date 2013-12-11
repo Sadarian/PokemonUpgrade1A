@@ -75,7 +75,7 @@ public class dfSlicedSprite : dfSprite
 
 		renderData.Material = Atlas.Material;
 
-		if( spriteInfo.border.horizontal == 0 || spriteInfo.border.vertical == 0 )
+		if( spriteInfo.border.horizontal == 0 && spriteInfo.border.vertical == 0 )
 		{
 			base.OnRebuildRenderData();
 			return;

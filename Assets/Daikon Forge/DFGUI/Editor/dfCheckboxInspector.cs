@@ -27,7 +27,7 @@ public class dfCheckboxInspector : dfControlInspector
 		if( !isFoldoutExpanded( foldouts, "Checkbox Properties", true ) )
 			return false;
 
-		EditorGUIUtility.LookLikeControls( 100f );
+		dfEditorUtil.LabelWidth = 100f;
 
 		var isChecked = EditorGUILayout.Toggle( "Checked", control.IsChecked );
 		if( isChecked != control.IsChecked )

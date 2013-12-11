@@ -5,6 +5,7 @@ using System.Linq;
 using System.Collections;
 using System.Collections.Generic;
 
+[AddComponentMenu( "Daikon Forge/Examples/Game Menu/Achievements Grid" )]
 [Serializable]
 public class DemoAchievementsGrid : MonoBehaviour
 {
@@ -29,7 +30,7 @@ public class DemoAchievementsGrid : MonoBehaviour
 	private List<dfControl> rows = new List<dfControl>();
 
 	private bool showAll = true;
-	private bool showAsGrid = true;
+	private bool showAsGrid = false;
 
 	#endregion
 
@@ -74,6 +75,8 @@ public class DemoAchievementsGrid : MonoBehaviour
 			rows.Clear();
 
 		};
+
+		ExpandAll();
 
 	}
 
@@ -120,8 +123,11 @@ public class DemoAchievementsGrid : MonoBehaviour
 		grid.Parent.Find<dfSprite>( "grid-style" ).Opacity = 0.5f;
 		grid.Parent.Find<dfSprite>( "list-style" ).Opacity = 1f;
 
-		rows.First( r => r.IsVisible ).Focus();
-		grid.Reset();
+		if( rows.Count > 0 )
+		{
+			rows.First( r => r.IsVisible ).Focus();
+			grid.Reset();
+		}
 
 	}
 

@@ -19,8 +19,6 @@ public class dfDataObjectProxyInspector : Editor
 		try
 		{
 
-			dfEditorUtil.ComponentCopyButton( target );
-
 			var proxy = target as dfDataObjectProxy;
 
 			var assignedScript = getMatchingScript( proxy.TypeName );
@@ -60,10 +58,7 @@ public class dfDataObjectProxyInspector : Editor
 			if( property == null )
 				return;
 
-			EditorGUIUtility.LookLikeControls( 100f );
-			EditorGUI.indentLevel += 1;
-
-			GUILayout.Label( "Data", "HeaderLabel" );
+			using( dfEditorUtil.BeginGroup( "Data" ) )
 			{
 				EditorGUILayout.PropertyField( property, true );
 			}

@@ -62,7 +62,7 @@ public class dfPrefabSelectionDialog : ScriptableWizard
 		dialog.previewSize = DEFAULT_PREVIEW_SIZE;
 		dialog.padding = DEFAULT_PADDING;
 		dialog.componentType = componentType;
-		dialog.minSize = new Vector2( 300, 200 );
+		dialog.minSize = new Vector2( 640, 480 );
 		dialog.callback = callback;
 		dialog.previewCallback = previewCallback;
 		dialog.filterCallback = filterCallback;
@@ -187,10 +187,19 @@ public class dfPrefabSelectionDialog : ScriptableWizard
 
 	private bool IsPrefab( GameObject item )
 	{
-		return
-			item != null &&
-			PrefabUtility.GetPrefabParent( item ) == null &&
-			PrefabUtility.GetPrefabObject( item ) != null;
+
+		try
+		{
+			return
+				item != null &&
+				PrefabUtility.GetPrefabParent( item ) == null &&
+				PrefabUtility.GetPrefabObject( item ) != null;
+		}
+		catch
+		{
+			return false;
+		}
+
 	}
 
 	private List<GameObject> getFilteredItems()

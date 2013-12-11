@@ -24,10 +24,9 @@ public class dfResizeHandleInspector : dfControlInspector
 
 		var handle = target as dfResizeHandle;
 
-		EditorGUIUtility.LookLikeControls( 120f );
-		EditorGUI.indentLevel += 1;
+		dfEditorUtil.LabelWidth = 120f;
 
-		GUILayout.Label( "Appearance", "HeaderLabel" );
+		using( dfEditorUtil.BeginGroup( "Appearance" ) )
 		{
 
 			SelectTextureAtlas( "Atlas", handle, "Atlas", false, true );
@@ -40,7 +39,7 @@ public class dfResizeHandleInspector : dfControlInspector
 
 		}
 
-		GUILayout.Label( "Edges", "HeaderLabel" );
+		using( dfEditorUtil.BeginGroup( "Edges" ) )
 		{
 
 			var edges = handle.Edges;

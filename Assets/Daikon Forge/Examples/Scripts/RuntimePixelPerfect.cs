@@ -7,6 +7,7 @@ using UnityEngine;
 /// Eases development by allowing the "Pixel Perfect" behavior to be
 /// different between running in the Editor vs. running on the target
 /// </summary>
+[AddComponentMenu( "Daikon Forge/Examples/General/Pixel-Perfect Platform Settings" )]
 public class RuntimePixelPerfect : MonoBehaviour
 {
 

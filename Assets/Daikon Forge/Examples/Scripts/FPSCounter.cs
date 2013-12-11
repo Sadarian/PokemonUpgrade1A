@@ -1,9 +1,7 @@
 using UnityEngine;
 using System.Collections;
 
-
-
-[AddComponentMenu( "Test Scripts/FPS Counter" )]
+[AddComponentMenu( "Daikon Forge/Examples/General/FPS Counter" )]
 [RequireComponent( typeof( dfLabel ) )]
 public class FPSCounter : MonoBehaviour
 {
@@ -26,6 +24,8 @@ public class FPSCounter : MonoBehaviour
 		}
 		
 		timeleft = updateInterval;
+
+		label.Text = "";
 
 	}
 

@@ -4,6 +4,7 @@ using System.Collections;
 
 using UnityEngine;
 
+[AddComponentMenu( "Daikon Forge/Examples/Actionbar/Spell Slot" )]
 [ExecuteInEditMode]
 public class SpellSlot : MonoBehaviour
 {

@@ -20,12 +20,9 @@ public class TweenGroupInspector : Editor
 
 		var group = target as dfTweenGroup;
 
-		dfEditorUtil.ComponentCopyButton( target );
+		dfEditorUtil.LabelWidth = 100f;
 
-		EditorGUIUtility.LookLikeControls( 100f );
-		EditorGUI.indentLevel += 1;
-
-		GUILayout.Label( "General", "HeaderLabel" );
+		using( dfEditorUtil.BeginGroup( "General" ) )
 		{
 
 			var name = EditorGUILayout.TextField( "Name", group.TweenName );
@@ -44,12 +41,10 @@ public class TweenGroupInspector : Editor
 
 		}
 
-		GUILayout.Label( "Tweens", "HeaderLabel" );
+		using( dfEditorUtil.BeginGroup( "Tweens" ) )
 		{
 
 			var tweens = group.Tweens;
-
-			EditorGUI.indentLevel += 1;
 
 			for( int i = 0; i < tweens.Count; i++ )
 			{
@@ -74,8 +69,6 @@ public class TweenGroupInspector : Editor
 				GUILayout.EndHorizontal();
 			}
 
-			EditorGUI.indentLevel -= 1;
-
 			EditorGUILayout.BeginHorizontal();
 			{
 				GUILayout.Space( dfEditorUtil.LabelWidth + 5 );
@@ -99,24 +92,28 @@ public class TweenGroupInspector : Editor
 		if( !Application.isPlaying )
 			return;
 
-		GUILayout.Label( "Debug", "HeaderLabel" );
-		EditorGUILayout.BeginHorizontal();
+		using( dfEditorUtil.BeginGroup( "Debug" ) )
 		{
-			GUILayout.Space( dfEditorUtil.LabelWidth + 5 );
-			if( GUILayout.Button( "Play", "minibutton" ) )
+
+			EditorGUILayout.BeginHorizontal();
 			{
-				tween.Play();
+				GUILayout.Space( dfEditorUtil.LabelWidth + 5 );
+				if( GUILayout.Button( "Play", "minibutton" ) )
+				{
+					tween.Play();
+				}
+				if( GUILayout.Button( "Stop", "minibutton" ) )
+				{
+					tween.Stop();
+				}
+				if( GUILayout.Button( "Reset", "minibutton" ) )
+				{
+					tween.Reset();
+				}
 			}
-			if( GUILayout.Button( "Stop", "minibutton" ) )
-			{
-				tween.Stop();
-			}
-			if( GUILayout.Button( "Reset", "minibutton" ) )
-			{
-				tween.Reset();
-			}
+			EditorGUILayout.EndHorizontal();
+
 		}
-		EditorGUILayout.EndHorizontal();
 
 		EditorGUILayout.Separator();
 

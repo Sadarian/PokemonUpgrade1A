@@ -2,6 +2,7 @@ using UnityEngine;
 using System.Collections;
 using System.Collections.Generic;
 
+[AddComponentMenu( "Daikon Forge/Examples/Color Picker/RGB Sliders Container" )]
 public class RGBSliders : MonoBehaviour
 {
 

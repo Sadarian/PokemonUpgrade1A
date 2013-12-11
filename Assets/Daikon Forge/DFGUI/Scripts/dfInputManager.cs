@@ -59,7 +59,7 @@ public class dfInputManager : MonoBehaviour
 	protected bool retainFocus = false;
 
 	[SerializeField]
-	protected int touchClickRadius = 10;
+	protected int touchClickRadius = 20;
 
 	#endregion
 
@@ -542,18 +542,29 @@ public class dfInputManager : MonoBehaviour
 
 		var mouseScreenPos = adapter.GetMousePosition();
 
-		var viewportMousePos = renderCamera.ScreenToViewportPoint( mouseScreenPos );
-		if( viewportMousePos.x < 0f || viewportMousePos.x > 1f || viewportMousePos.y < 0f || viewportMousePos.y > 1f )
-			return;
+#if !UNITY_EDITOR
+		//var viewportMousePos = renderCamera.ScreenToViewportPoint( mouseScreenPos );
+		//if( viewportMousePos.x < 0f || viewportMousePos.x > 1f || viewportMousePos.y < 0f || viewportMousePos.y > 1f )
+		//    return;
+#endif
 
 		var ray = renderCamera.ScreenPointToRay( mouseScreenPos );
 		var maxDistance = renderCamera.farClipPlane - renderCamera.nearClipPlane;
 
 		var hits = Physics.RaycastAll( ray, maxDistance, renderCamera.cullingMask );
+		Array.Sort( hits, raycastHitSorter );
 
 		controlUnderMouse = clipCast( hits );
 		mouseHandler.ProcessInput( adapter, ray, controlUnderMouse, this.retainFocus );
 
+	}
+
+	/// <summary>
+	/// Sorts RaycastHit instances by distance
+	/// </summary>
+	internal static int raycastHitSorter( RaycastHit lhs, RaycastHit rhs )
+	{
+		return lhs.distance.CompareTo( rhs.distance );
 	}
 
 	/// <summary>
@@ -562,7 +573,7 @@ public class dfInputManager : MonoBehaviour
 	/// </summary>
 	/// <param name="hits"></param>
 	/// <returns></returns>
-	private dfControl clipCast( RaycastHit[] hits )
+	internal dfControl clipCast( RaycastHit[] hits )
 	{
 
 		if( hits == null || hits.Length == 0 )
@@ -580,7 +591,7 @@ public class dfInputManager : MonoBehaviour
 				control == null ||
 				( modalControl != null && !control.transform.IsChildOf( modalControl.transform ) ) ||
 				!control.enabled ||
-				control.Opacity < 0.01f ||
+				combinedOpacity( control ) <= 0.01f ||
 				!control.IsEnabled ||
 				!control.IsVisible ||
 				!control.transform.IsChildOf( this.transform );
@@ -608,7 +619,7 @@ public class dfInputManager : MonoBehaviour
 	/// </summary>
 	/// <param name="control"></param>
 	/// <returns></returns>
-	private bool isInsideClippingRegion( RaycastHit hit, dfControl control )
+	internal static bool isInsideClippingRegion( RaycastHit hit, dfControl control )
 	{
 
 		var point = hit.point;
@@ -633,6 +644,20 @@ public class dfInputManager : MonoBehaviour
 		}
 
 		return true;
+
+	}
+
+	private static float combinedOpacity( dfControl control )
+	{
+
+		var opacity = 1f;
+		while( control != null )
+		{
+			opacity *= control.Opacity;
+			control = control.Parent;
+		}
+
+		return opacity;
 
 	}
 

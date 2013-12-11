@@ -52,10 +52,6 @@ public abstract class dfFontBase : MonoBehaviour
 
 	#region Public methods 
 
-	public abstract dfFont.GlyphDefinition GetGlyph( char character );
-
-	public abstract int GetKerning( char previousChar, char currentChar );
-
 	public abstract dfFontRendererBase ObtainRenderer();
 
 	#endregion
@@ -103,16 +99,19 @@ public abstract class dfFontRendererBase : IDisposable
 
 	public abstract void Release();
 
+	/// <summary>
+	/// Returns an array of float values, each one corresponding 
+	/// to the width of the character at the same position of the 
+	/// source text. NOTE: Does not do any markup processing, and
+	/// must only be used on single-line plaintext.
+	/// </summary>
 	public abstract float[] GetCharacterWidths( string text );
 
-	public abstract float[] GetCharacterWidths( string text, out float totalWidth );
-
-	public abstract Vector2 GetCharRenderPosition( int offset, ref float charWidth );
-
 	/// <summary>
-	/// Measures a single line of text, with no line breaks or word wrapping
+	/// Measures the given text and returns the size (in pixels) required to render the text.
 	/// </summary>
-	/// <param name="text">The line of text to be measured</param>
+	/// <param name="text">The text to be measured</param>
+	/// <returns>The size required to render the text</returns>
 	public abstract Vector2 MeasureString( string text );
 
 	/// <summary>
@@ -127,7 +126,7 @@ public abstract class dfFontRendererBase : IDisposable
 
 	#region Protected methods 
 
-	protected void Reset()
+	protected virtual void Reset()
 	{
 	
 		this.Font = null;
@@ -142,7 +141,7 @@ public abstract class dfFontRendererBase : IDisposable
 		this.ColorizeSymbols = false;
 		this.TextAlign = TextAlignment.Left;
 		this.DefaultColor = Color.white;
-		this.BottomColor = null;
+		this.BottomColor = (Color32?)null;
 		this.Opacity = 1f;
 		this.Outline = false;
 		this.Shadow = false;

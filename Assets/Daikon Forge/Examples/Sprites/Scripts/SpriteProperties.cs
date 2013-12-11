@@ -4,6 +4,7 @@ using System.Collections;
 // NOTES: This class is used by the dfSprite examples to provide properties
 // that can easily be bound to controls.
 
+[AddComponentMenu( "Daikon Forge/Examples/Sprites/Sprite Properties" )]
 public class SpriteProperties : MonoBehaviour
 {
 

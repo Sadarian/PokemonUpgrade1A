@@ -75,6 +75,15 @@ public class dfGUIManager : MonoBehaviour
 	[SerializeField]
 	protected bool generateNormals = false;
 
+	[SerializeField]
+	protected bool consumeMouseEvents = true;
+
+	[SerializeField]
+	protected bool overrideCamera = false;
+
+	[SerializeField]
+	protected int renderQueueBase = 3000;
+
 	#endregion
 
 	#region Static fields
@@ -110,6 +119,7 @@ public class dfGUIManager : MonoBehaviour
 	private dfList<dfRenderData> drawCallBuffers = new dfList<dfRenderData>();
 	private List<int> submeshes = new List<int>();
 	private int drawCallCount = 0;
+	private Vector2 uiOffset = Vector2.zero;
 
 	#endregion
 
@@ -144,6 +154,23 @@ public class dfGUIManager : MonoBehaviour
 			{
 				this.uiScale = value;
 				onResolutionChanged();
+			}
+		}
+	}
+
+	/// <summary>
+	/// Gets or sets the amount and direction of "offset" for the entire
+	/// user interface. Useful for "panning" or implementing "shake".
+	/// </summary>
+	public Vector2 UIOffset
+	{
+		get { return this.uiOffset; }
+		set
+		{
+			if( !Vector2.Equals( this.uiOffset, value ) )
+			{
+				this.uiOffset = value;
+				Invalidate();
 			}
 		}
 	}
@@ -314,6 +341,27 @@ public class dfGUIManager : MonoBehaviour
 		}
 	}
 
+	/// <summary>
+	/// Gets or sets whether mouse events generated on an active control
+	/// will be "consumed" (unavailable for other in-game processing)
+	/// </summary>
+	public bool ConsumeMouseEvents
+	{
+		get { return this.consumeMouseEvents; }
+		set { this.consumeMouseEvents = value; }
+	}
+
+	/// <summary>
+	/// Gets or sets whether user scripts will override the RenderCamera's
+	/// settins. If set to TRUE, then user scripts will be responsible for
+	/// all camera settings on the UI camera
+	/// </summary>
+	public bool OverrideCamera
+	{
+		get { return this.overrideCamera; }
+		set { this.overrideCamera = value; }
+	}
+
 	#endregion
 
 	#region Unity events
@@ -321,7 +369,7 @@ public class dfGUIManager : MonoBehaviour
 	public void OnGUI()
 	{
 
-		if( occluders == null )
+		if( overrideCamera || !consumeMouseEvents || !Application.isPlaying || occluders == null )
 			return;
 
 		// This code prevents "click through" by iterating 
@@ -334,11 +382,18 @@ public class dfGUIManager : MonoBehaviour
 		var mousePosition = Input.mousePosition;
 		mousePosition.y = Screen.height - mousePosition.y;
 
+		if( modalControlStack.Count > 0 )
+		{
+			// If there is a modal control/window being displayed, block 
+			// mouse/touch input for the entire screen.
+			GUI.Box( new Rect( 0, 0, Screen.width, Screen.height ), GUIContent.none, GUIStyle.none );
+		}
+
 		for( int i = 0; i < occluders.Count; i++ )
 		{
 			if( occluders[ i ].Contains( mousePosition ) )
 			{
-				GUI.Box( occluders[ i ], "", GUIStyle.none );
+				GUI.Box( occluders[ i ], GUIContent.none, GUIStyle.none );
 				break;
 			}
 		}
@@ -658,10 +713,14 @@ public class dfGUIManager : MonoBehaviour
 
 		if( meshRenderer != null )
 		{
+
 			renderFilter.sharedMesh = null;
+
 			DestroyImmediate( renderMesh[ 0 ] );
 			DestroyImmediate( renderMesh[ 1 ] );
+
 			renderMesh = null;
+
 		}
 
 	}
@@ -671,8 +730,10 @@ public class dfGUIManager : MonoBehaviour
 	/// </summary>
 	public virtual void Awake()
 	{
+
 		// Clean up any render data that might have been allocated on a previous level
 		dfRenderData.FlushObjectPool();
+
 	}
 
 	/// <summary>
@@ -694,6 +755,28 @@ public class dfGUIManager : MonoBehaviour
 		{
 			onResolutionChanged();
 		}
+
+	}
+
+	/// <summary>
+	/// This function is called by the Unity engine when the cotnrol becomes 
+	/// disabled or inactive.
+	/// </summary>
+	public virtual void OnDisable()
+	{
+
+		if( meshRenderer != null )
+		{
+			meshRenderer.enabled = false;
+		}
+
+		//var controls = GetComponentsInChildren<dfControl>();
+		//Array.Sort( controls, renderSortFunc );
+		//for( int i = 0; i < controls.Length; i++ )
+		//{
+		//    controls[ i ].updateControlHierarchy( true );
+		//    controls[ i ].PerformLayout();
+		//}
 
 	}
 
@@ -728,18 +811,6 @@ public class dfGUIManager : MonoBehaviour
 			meshRenderer.enabled = true;
 		}
 
-	}
-
-	/// <summary>
-	/// This function is called by the Unity engine when the cotnrol becomes 
-	/// disabled or inactive.
-	/// </summary>
-	public virtual void OnDisable()
-	{
-		if( meshRenderer != null )
-		{
-			meshRenderer.enabled = false;
-		}
 	}
 
 	/// <summary>
@@ -780,7 +851,7 @@ public class dfGUIManager : MonoBehaviour
 		// If the screen size has changed since we last checked we need to let all
 		// controls know about the new screen size so that they can reposition or 
 		// resize themselves, etc.
-		var currentScreenSize = GetScreenSize( false );
+		var currentScreenSize = GetScreenSize();
 		if( ( currentScreenSize - cachedScreenSize ).sqrMagnitude > float.Epsilon )
 		{
 			onResolutionChanged( cachedScreenSize, currentScreenSize );
@@ -795,6 +866,11 @@ public class dfGUIManager : MonoBehaviour
 	/// </summary>
 	public virtual void LateUpdate()
 	{
+
+		if( this.renderMesh == null || this.renderMesh.Length == 0 )
+		{
+			initialize();
+		}
 
 		if( !Application.isPlaying )
 		{
@@ -818,7 +894,9 @@ public class dfGUIManager : MonoBehaviour
 		if( isDirty )
 		{
 			isDirty = false;
+			//@Profiler.BeginSample( "Rendering user interface" );
 			Render();
+			//@Profiler.EndSample();
 		}
 
 	}
@@ -826,6 +904,50 @@ public class dfGUIManager : MonoBehaviour
 	#endregion
 
 	#region Public methods
+
+	/// <summary>
+	/// Returns the top-most control under the given screen position.
+	/// NOTE: the <paramref name="screenPosition"/> parameter should be
+	/// in "screen coordinates", such as the value from Input.mousePosition
+	/// </summary>
+	/// <param name="screenPosition">The screen position to check</param>
+	/// <returns></returns>
+	public dfControl HitTest( Vector2 screenPosition )
+	{
+
+		var ray = renderCamera.ScreenPointToRay( screenPosition );
+		var maxDistance = renderCamera.farClipPlane - renderCamera.nearClipPlane;
+
+		var hits = Physics.RaycastAll( ray, maxDistance, renderCamera.cullingMask );
+		Array.Sort( hits, dfInputManager.raycastHitSorter );
+
+		return inputManager.clipCast( hits );
+
+	}
+
+	/// <summary>
+	/// Returns the GUI coordinates of a point in 3D space
+	/// </summary>
+	/// <param name="worldPoint"></param>
+	/// <returns></returns>
+	public Vector2 WorldPointToGUI( Vector3 worldPoint )
+	{
+
+		// Calculate the effective screen size
+		var screenSize = GetScreenSize();
+
+		// Obtain a reference to the main camera
+		var mainCamera = Camera.main;
+
+		// Convert world point to resolution-independant screen point
+		var screenPoint = Camera.main.WorldToScreenPoint( worldPoint );
+		screenPoint.x = screenSize.x * ( screenPoint.x / mainCamera.pixelWidth );
+		screenPoint.y = screenSize.y * ( screenPoint.y / mainCamera.pixelHeight );
+
+		// Return screen point as GUI coordinate point 
+		return ScreenToGui( screenPoint );
+
+	}
 
 	/// <summary>
 	/// Returns a value indicating the size in 3D Units that corresponds to a single 
@@ -899,7 +1021,7 @@ public class dfGUIManager : MonoBehaviour
 	/// is derived from the value of the <see cref="FixedHeight"/> property.
 	/// </summary>
 	/// <returns></returns>
-	public Vector2 GetScreenSize( bool roundToNearestEven = true )
+	public Vector2 GetScreenSize()
 	{
 
 		var camera = RenderCamera;
@@ -910,21 +1032,16 @@ public class dfGUIManager : MonoBehaviour
 		// always returns a value of 640x480 for some reason.
 		var returnActualScreenSize =
 			Application.isPlaying && 
-			camera != null && 
-			this.pixelPerfectMode;
+			camera != null;
 
 		if( returnActualScreenSize )
 		{
-			return new Vector2( camera.pixelWidth, camera.pixelHeight ) / uiScale;
+			var uiScale = PixelPerfectMode ? 1 : ( camera.pixelHeight / (float)fixedHeight ) * this.uiScale;
+			return ( new Vector2( camera.pixelWidth, camera.pixelHeight ) / uiScale ).CeilToInt();
 		}
 
 		return new Vector2( FixedWidth, FixedHeight );
 
-	}
-
-	private float nearestEvenValue( float value )
-	{
-		return value.RoundToNearest( 2 );
 	}
 
 	/// <summary>
@@ -953,9 +1070,25 @@ public class dfGUIManager : MonoBehaviour
 		go.layer = this.gameObject.layer;
 
 		var child = go.GetComponent( type ) as dfControl;
-		BringToFront( child );
+		child.ZOrder = getMaxZOrder() + 1;
 
 		return child;
+
+	}
+
+	private int getMaxZOrder()
+	{
+
+		var max = -1;
+		using( var controls = getTopLevelControls() )
+		{
+			for( int i = 0; i < controls.Count; i++ )
+			{
+				max = Mathf.Max( max, controls[ i ].ZOrder );
+			}
+		}
+
+		return max;
 
 	}
 
@@ -1267,7 +1400,9 @@ public class dfGUIManager : MonoBehaviour
 		{
 
 			// Make sure all render settings are correctly configured
+			//@Profiler.BeginSample( "Update render settings" );
 			updateRenderSettings();
+			//@Profiler.EndSample();
 
 			// We'll be keeping track of how many controls were actually rendered,
 			// as opposed to just how many exist in the scene.
@@ -1294,7 +1429,8 @@ public class dfGUIManager : MonoBehaviour
 
 			if( renderMesh == null || renderMesh.Length == 0 )
 			{
-				throw new Exception( "GUI Manager not initialized before Render() called" );
+				Debug.LogError( "GUI Manager not initialized before Render() called" );
+				return;
 			}
 
 			resetDrawCalls();
@@ -1328,6 +1464,11 @@ public class dfGUIManager : MonoBehaviour
 			}
 
 			#endregion
+
+			// Remove any empty draw call buffers. There might be empty 
+			// draw call buffers due to controls that were clipped.
+			drawCallBuffers.RemoveAll( x => x.Vertices.Count == 0 );
+			drawCallCount = drawCallBuffers.Count;
 
 			// At this point, the drawCallCount variable contains the 
 			// number of draw calls needed to render the user interface.
@@ -1402,6 +1543,15 @@ public class dfGUIManager : MonoBehaviour
 			clipStack.Clear();
 
 		}
+		catch( dfAbortRenderingException )
+		{
+			// Do nothing... This exception is thrown by any component that requires
+			// the rendering pipeline to be aborted. For instance, the dfDynamicFont
+			// class will throw this exception when the dynamic font atlas was 
+			// rebuilt, which causes any control rendered with that dynamic font
+			// to be invalid and require re-rendering.
+			isDirty = true;
+		}
 		finally
 		{
 			if( AfterRender != null )
@@ -1445,19 +1595,10 @@ public class dfGUIManager : MonoBehaviour
 		if( camera == null )
 			return;
 
-		// If the screen size has changed since we last checked we need to let all
-		// controls know about the new screen size so that they can reposition or 
-		// resize themselves, etc.
-		var currentScreenSize = GetScreenSize( false );
-		if( ( currentScreenSize - cachedScreenSize ).sqrMagnitude > float.Epsilon )
+		if( !overrideCamera )
 		{
-			onResolutionChanged( cachedScreenSize, currentScreenSize );
-			cachedScreenSize = currentScreenSize;
-			Invalidate();
-			return;
+			updateRenderCamera( camera );
 		}
-
-		updateRenderCamera( camera );
 
 		#region Enforce uniform scaling
 
@@ -1488,21 +1629,27 @@ public class dfGUIManager : MonoBehaviour
 
 		#endregion
 
-		// Since everything is positioned and sized according to a "design-time" pixel
-		// size, we can scale the entire UI to fit actual pixel sizes by modifying
-		// the camera's OrthographicSize or FOV property.
-		if( pixelPerfectMode && Application.isPlaying )
+		if( !overrideCamera )
 		{
 
-			var uiScale = !Application.isPlaying ? 1f : camera.pixelHeight / (float)fixedHeight;
+			// Since everything is positioned and sized according to a "design-time" pixel
+			// size, we can scale the entire UI to fit actual pixel sizes by modifying
+			// the camera's OrthographicSize or FOV property.
+			if( Application.isPlaying && PixelPerfectMode )
+			{
 
-			camera.orthographicSize = uiScale;
-			camera.fieldOfView = 60 * uiScale;
-		}
-		else
-		{
-			camera.orthographicSize = 1f;
-			camera.fieldOfView = 60f;
+				var uiScale = camera.pixelHeight / (float)fixedHeight;
+
+				camera.orthographicSize = uiScale;
+				camera.fieldOfView = 60 * uiScale;
+
+			}
+			else
+			{
+				camera.orthographicSize = 1f;
+				camera.fieldOfView = 60f;
+			}
+
 		}
 
 		// TODO: Is setting Camera.transparencySortMode still needed?
@@ -1541,7 +1688,7 @@ public class dfGUIManager : MonoBehaviour
 		// but can get out of whack if the user switches between Perspective
 		// and Orthographic views. This also helps the user during initial
 		// setup of the user interface hierarchy.
-		var cameraPosition = Vector3.zero;
+		var cameraPosition = Application.isPlaying ? -(Vector3)uiOffset * PixelsToUnits() : Vector3.zero;
 		if( camera.isOrthoGraphic )
 		{
 			camera.nearClipPlane = Mathf.Min( camera.nearClipPlane, -1f );
@@ -1582,13 +1729,18 @@ public class dfGUIManager : MonoBehaviour
 
 		}
 
-		// Adjust camera position if needed
-		if( Vector3.SqrMagnitude( camera.transform.localPosition - cameraPosition ) > float.Epsilon )
+		if( !overrideCamera )
 		{
-			camera.transform.localPosition = cameraPosition;
-		}
 
-		camera.transform.hasChanged = false;
+			// Adjust camera position if needed
+			if( Vector3.SqrMagnitude( camera.transform.localPosition - cameraPosition ) > float.Epsilon )
+			{
+				camera.transform.localPosition = cameraPosition;
+			}
+
+			camera.transform.hasChanged = false;
+
+		}
 
 	}
 
@@ -1604,6 +1756,7 @@ public class dfGUIManager : MonoBehaviour
 			submeshes.Add( masterBuffer.Triangles.Count );
 
 			var buffer = drawCallBuffers[ i ];
+
 			if( generateNormals && buffer.Normals.Count == 0 )
 			{
 				generateNormalsAndTangents( buffer );
@@ -1612,33 +1765,6 @@ public class dfGUIManager : MonoBehaviour
 			masterBuffer.Merge( buffer, false );
 
 		}
-
-		//if( Application.isPlaying && pixelPerfectMode )
-		//{
-
-		//    var screenHeight = renderCamera.pixelHeight;
-		//    var pixelSize = ( 2f / screenHeight ) * ( screenHeight / (float)FixedHeight );
-
-		//    //int openGL = SystemInfo.graphicsDeviceVersion.StartsWith( "direct", StringComparison.InvariantCultureIgnoreCase ) ? 0 : 1;
-
-		//    //float xmult = ( (int)renderCamera.pixelWidth % 2 == openGL ? 0.5f : 0f );
-		//    //float ymult = ( (int)renderCamera.pixelHeight % 2 == openGL ? 0.5f : 0f );
-
-		//    //var offset = transform.TransformDirection( new Vector3(
-		//    //    pixelSize * xmult,
-		//    //    pixelSize * ymult,
-		//    //    0
-		//    //) );
-
-		//    var verts = masterBuffer.Vertices;
-		//    for( int i = 0; i < verts.Count; i++ )
-		//    {
-		//        //var vert = offset + verts[ i ];
-		//        var vert = verts[ i ].Quantize( pixelSize );
-		//        verts[ i ] = vert;
-		//    }
-
-		//}
 
 		// Translate the "world" coordinates in the buffer back into local 
 		// coordinates relative to this GUIManager. This allows the GUIManager to be 
@@ -1681,7 +1807,7 @@ public class dfGUIManager : MonoBehaviour
 				platform == RuntimePlatform.WindowsEditor
 			) && ( SystemInfo.graphicsShaderLevel < 40 );
 
-		applyHalfPixelOffset = needsHPO;
+		applyHalfPixelOffset = Application.isEditor || needsHPO;
 
 		return needsHPO;
 
@@ -1694,7 +1820,7 @@ public class dfGUIManager : MonoBehaviour
 
 		// Incrementing counter to ensure that submeshes render
 		// in the correct order on all platforms and environments
-		int materialRenderOrder = 3000;
+		int materialRenderOrder = renderQueueBase;
 
 		// Reset the material cache to keep allocations to a minimum
 		MaterialCache.Reset();
@@ -1790,10 +1916,16 @@ public class dfGUIManager : MonoBehaviour
 	private void renderControl( ref dfRenderData buffer, dfControl control, uint checksum, float opacity )
 	{
 
+		// Don't render controls that have the IsVisible flag disabled
+		if( !control.GetIsVisibleRaw() )
+			return;
+
 		// Don't render controls that are invisible. Keeping a running 
 		// accumulator for opacity allows us to know a control's final
 		// calculated opacity
 		var effectiveOpacity = opacity * control.Opacity;
+		if( opacity <= 0.005f )
+			return;
 
 		// Grab the current clip region information off the stack
 		var clipInfo = clipStack.Peek();
@@ -1911,11 +2043,16 @@ public class dfGUIManager : MonoBehaviour
 		// and uses a different Material, need to grab a new draw call
 		// buffer from the object pool
 		bool needNewDrawcall =
-			buffer == null ||
+			buffer == null || 
 			(
 				controlData.IsValid() &&
-				controlData.Material != null &&
-				!controlData.Material.Equals( buffer.Material )
+				(
+					!Shader.Equals( buffer.Shader, controlData.Shader ) ||
+					(
+						controlData.Material != null &&
+						!controlData.Material.Equals( buffer.Material )
+					)
+				)
 			);
 
 		if( needNewDrawcall && controlData.IsValid() )
@@ -2198,13 +2335,17 @@ public class dfGUIManager : MonoBehaviour
 				if( controlData.Intersection == dfIntersectionType.Inside )
 				{
 					// Merge the control's rendering information without any clipping
+					//@Profiler.BeginSample( "Merge cached buffer - Fully inside" );
 					dest.Merge( controlData );
+					//@Profiler.EndSample();
 					return true;
 				}
 				else if( controlData.Intersection == dfIntersectionType.None )
 				{
 					// Control lies entirely outside of the clipping region,
 					// no need to include any of its rendering information
+					//@Profiler.BeginSample( "Discard cached buffer - No intersection" );
+					//@Profiler.EndSample();
 					return false;
 				}
 
@@ -2212,18 +2353,24 @@ public class dfGUIManager : MonoBehaviour
 
 			var wasRendered = false;
 
+			//@Profiler.BeginSample( "Clipping buffer data" );
+
 			dfIntersectionType intersectionTest;
 			using( var clipPlanes = TestIntersection( bounds, out intersectionTest ) )
 			{
 
 				if( intersectionTest == dfIntersectionType.Inside )
 				{
+					//@Profiler.BeginSample( "Merging buffer - Fully inside" );
 					dest.Merge( controlData );
+					//@Profiler.EndSample();
 					wasRendered = true;
 				}
 				else if( intersectionTest == dfIntersectionType.Intersecting )
 				{
+					//@Profiler.BeginSample( "Clipping intersecting buffer" );
 					clipToPlanes( clipPlanes, controlData, dest, checksum );
+					//@Profiler.EndSample();
 					wasRendered = true;
 				}
 
@@ -2232,6 +2379,7 @@ public class dfGUIManager : MonoBehaviour
 
 			}
 
+			//@Profiler.EndSample();
 			return wasRendered;
 
 		}

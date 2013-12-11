@@ -3,6 +3,7 @@ using System.Collections;
 
 using UnityEngine;
 
+[AddComponentMenu( "Daikon Forge/Examples/Game Menu/Browse Games List Item" )]
 public class DemoBrowseGridListItem : MonoBehaviour
 {
 

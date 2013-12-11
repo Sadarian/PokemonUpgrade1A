@@ -15,7 +15,7 @@ using System.Collections.Generic;
 [ExecuteInEditMode]
 [RequireComponent( typeof( BoxCollider ) )]
 [AddComponentMenu( "Daikon Forge/User Interface/Textbox" )]
-public class dfTextbox : dfInteractiveBase
+public class dfTextbox : dfInteractiveBase, IDFMultiRender
 {
 
 	#region Public events 
@@ -54,7 +54,7 @@ public class dfTextbox : dfInteractiveBase
 	#region Protected serialized fields
 
 	[SerializeField]
-	protected dfFont font;
+	protected dfFontBase font;
 
 	[SerializeField]
 	protected bool acceptsTab = false;
@@ -157,7 +157,7 @@ public class dfTextbox : dfInteractiveBase
 	/// Gets or sets a reference to the <see cref="dfFont"/> that will be 
 	/// used to render the text for this control
 	/// </summary>
-	public dfFont Font
+	public dfFontBase Font
 	{
 		get
 		{
@@ -334,7 +334,12 @@ public class dfTextbox : dfInteractiveBase
 	public int CursorIndex
 	{
 		get { return this.cursorIndex; }
-		set { this.cursorIndex = value; }
+		set 
+		{ 
+			value = Mathf.Max( 0, value );
+			value = Mathf.Min( 0, text.Length - 1 );
+			this.cursorIndex = value;
+		}
 	}
 
 	/// <summary>
@@ -617,7 +622,7 @@ public class dfTextbox : dfInteractiveBase
 	protected internal override void OnKeyPress( dfKeyEventArgs args )
 	{
 
-		if( ReadOnly || args.KeyCode < KeyCode.Space || args.KeyCode > KeyCode.Z )
+		if( ReadOnly || char.IsControl( args.Character ) )
 		{
 			base.OnKeyPress( args );
 			return;
@@ -842,6 +847,9 @@ public class dfTextbox : dfInteractiveBase
 
 	private void selectWordAtIndex( int index )
 	{
+
+		if( string.IsNullOrEmpty( text ) )
+			return;
 
 		index = Mathf.Max( Mathf.Min( text.Length - 1, index ), 0 );
 
@@ -1253,19 +1261,6 @@ public class dfTextbox : dfInteractiveBase
 
 	}
 
-	protected override void OnRebuildRenderData()
-	{
-
-		if( Atlas == null || Font == null )
-			return;
-
-		renderData.Material = Atlas.Material;
-
-		renderBackground();
-		renderText();
-
-	}
-
 	public override void OnEnable()
 	{
 
@@ -1354,19 +1349,31 @@ public class dfTextbox : dfInteractiveBase
 
 		if( useMobileKeyboard && this.mobileKeyboardTrigger == dfMobileKeyboardTrigger.ShowOnClick )
 		{
+
 			ClearSelection();
 			selectToEnd();
+
 			TouchScreenKeyboard.hideInput = mobileHideInputField;
+
 			mobileKeyboard = TouchScreenKeyboard.Open( this.text, (TouchScreenKeyboardType)mobileKeyboardType, mobileAutoCorrect, false, IsPasswordField );
+
+#if UNITY_ANDROID
+			// HACK: This is a hacky workaround for a bug in Unity's mobile keyboard on Android
+			if( mobileHideInputField )
+			{
+				mobileKeyboard = TouchScreenKeyboard.Open( this.text, (TouchScreenKeyboardType)mobileKeyboardType, mobileAutoCorrect, false, IsPasswordField );
+			}
+#endif
+
 		}
 
 	}
 #endif
 
-	protected internal override void OnGotFocus( dfFocusEventArgs args )
+	protected internal override void OnEnterFocus( dfFocusEventArgs args )
 	{
 
-		base.OnGotFocus( args );
+		base.OnEnterFocus( args );
 
 		this.undoText = this.Text;
 
@@ -1387,7 +1394,7 @@ public class dfTextbox : dfInteractiveBase
 			}
 
 #if ( UNITY_IPHONE || UNITY_ANDROID || UNITY_BLACKBERRY || UNITY_WP8 ) && !UNITY_EDITOR
-			if( useMobileKeyboard && this.mobileKeyboardTrigger == dfMobileKeyboardTrigger.ShowOnFocus )
+			if( useMobileKeyboard && mobileKeyboard == null && this.mobileKeyboardTrigger == dfMobileKeyboardTrigger.ShowOnFocus )
 			{
 				ClearSelection();
 				selectToEnd();
@@ -1402,10 +1409,10 @@ public class dfTextbox : dfInteractiveBase
 
 	}
 
-	protected internal override void OnLostFocus( dfFocusEventArgs args )
+	protected internal override void OnLeaveFocus( dfFocusEventArgs args )
 	{
 
-		base.OnLostFocus( args );
+		base.OnLeaveFocus( args );
 
 #if UNITY_IPHONE || UNITY_ANDROID || UNITY_BLACKBERRY || UNITY_WP8 || UNITY_EDITOR
 		if( mobileKeyboard != null )
@@ -1427,6 +1434,12 @@ public class dfTextbox : dfInteractiveBase
 	protected internal override void OnDoubleClick( dfMouseEventArgs args )
 	{
 
+		if( args.Source != this )
+		{
+			base.OnDoubleClick( args );
+			return;
+		}
+
 		if( !ReadOnly && HasFocus && args.Buttons.IsSet( dfMouseButtons.Left ) && ( Time.realtimeSinceStartup - whenGotFocus ) > 0.5f )
 		{
 			var index = getCharIndexOfMouse( args );
@@ -1440,7 +1453,21 @@ public class dfTextbox : dfInteractiveBase
 	protected internal override void OnMouseDown( dfMouseEventArgs args )
 	{
 
-		if( !ReadOnly && HasFocus && args.Buttons.IsSet( dfMouseButtons.Left ) && ( Time.realtimeSinceStartup - whenGotFocus ) > 0.25f )
+		if( args.Source != this )
+		{
+			base.OnMouseDown( args );
+			return;
+		}
+
+		var setCursorPosition =
+			!ReadOnly &&
+			args.Buttons.IsSet( dfMouseButtons.Left ) &&
+			(
+				(!HasFocus && !SelectOnFocus) ||
+				( Time.realtimeSinceStartup - whenGotFocus ) > 0.25f
+			);
+
+		if( setCursorPosition )
 		{
 
 			var index = getCharIndexOfMouse( args );
@@ -1463,6 +1490,12 @@ public class dfTextbox : dfInteractiveBase
 
 	protected internal override void OnMouseMove( dfMouseEventArgs args )
 	{
+
+		if( args.Source != this )
+		{
+			base.OnMouseMove( args );
+			return;
+		}
 
 		if( !ReadOnly && HasFocus && args.Buttons.IsSet( dfMouseButtons.Left ) )
 		{
@@ -1577,7 +1610,7 @@ public class dfTextbox : dfInteractiveBase
 
 		cursorShown = true;
 
-		while( HasFocus )
+		while( ContainsFocus )
 		{
 			yield return new WaitForSeconds( cursorBlinkTime );
 			cursorShown = !cursorShown;
@@ -1588,7 +1621,7 @@ public class dfTextbox : dfInteractiveBase
 
 	}
 
-	private void renderText()
+	private void renderText( dfRenderData textBuffer )
 	{
 
 		var p2u = PixelsToUnits();
@@ -1619,7 +1652,8 @@ public class dfTextbox : dfInteractiveBase
 			textRenderer.TextAlign = TextAlignment.Left;
 			textRenderer.ProcessMarkup = false;
 			textRenderer.DefaultColor = renderColor;
-			textRenderer.OverrideMarkupColors = true;
+			textRenderer.BottomColor = renderColor;
+			textRenderer.OverrideMarkupColors = false;
 			textRenderer.Opacity = this.CalculateOpacity();
 			textRenderer.Shadow = this.Shadow;
 			textRenderer.ShadowColor = this.ShadowColor;
@@ -1686,13 +1720,12 @@ public class dfTextbox : dfInteractiveBase
 			{
 				renderSelection( scrollIndex, charWidths, leftOffset );
 			}
-
-			textRenderer.Render( displayText.Substring( scrollIndex ), renderData );
-
-			if( cursorShown && selectionEnd == selectionStart )
+			else if( cursorShown )
 			{
 				renderCursor( scrollIndex, cursorIndex, charWidths, leftOffset );
 			}
+
+			textRenderer.Render( displayText.Substring( scrollIndex ), textBuffer );
 
 		}
 
@@ -1894,6 +1927,75 @@ public class dfTextbox : dfInteractiveBase
 		}
 
 		return index;
+
+	}
+
+	#endregion
+
+	#region IDFMultiRender Members
+
+	private dfRenderData textRenderData = null;
+	private dfList<dfRenderData> buffers = dfList<dfRenderData>.Obtain();
+
+	public dfList<dfRenderData> RenderMultiple()
+	{
+
+		if( Atlas == null || Font == null )
+			return null;
+
+		if( !isVisible )
+		{
+			return null;
+		}
+
+		// Initialize render buffers if needed
+		if( renderData == null )
+		{
+
+			renderData = dfRenderData.Obtain();
+			textRenderData = dfRenderData.Obtain();
+
+			isControlInvalidated = true;
+
+		}
+
+		// If control is not dirty, update the transforms on the 
+		// render buffers (in case control moved) and return 
+		// pre-rendered data
+		if( !isControlInvalidated )
+		{
+			for( int i = 0; i < buffers.Count; i++ )
+			{
+				buffers[ i ].Transform = transform.localToWorldMatrix;
+			}
+			return buffers;
+		}
+
+		#region Prepare render buffers 
+
+		buffers.Clear();
+
+		renderData.Clear();
+		renderData.Material = Atlas.Material;
+		renderData.Transform = this.transform.localToWorldMatrix;
+		buffers.Add( renderData );
+
+		textRenderData.Clear();
+		textRenderData.Material = Atlas.Material;
+		textRenderData.Transform = this.transform.localToWorldMatrix;
+		buffers.Add( textRenderData );
+
+		#endregion
+
+		renderBackground();
+		renderText( textRenderData );
+
+		isControlInvalidated = false;
+
+		// Make sure that the collider size always matches the control
+		updateCollider();
+
+		return buffers;
 
 	}
 

@@ -180,7 +180,7 @@ public class dfMarkupBox
 		try
 		{
 
-			Profiler.BeginSample( "Render markup box: " + this.GetType().Name );
+			//@Profiler.BeginSample( "Render markup box: " + this.GetType().Name );
 
 			endCurrentLine();
 
@@ -189,7 +189,7 @@ public class dfMarkupBox
 		}
 		finally
 		{
-			Profiler.EndSample();
+			//@Profiler.EndSample();
 		}
 
 	}
@@ -888,7 +888,7 @@ public class dfMarkupBoxTexture : dfMarkupBox
 		renderData.UV.Add( new Vector2( 1, 0 ) );
 		renderData.UV.Add( new Vector2( 0, 0 ) );
 
-		var color = Color.white;
+		var color = Style.Color;
 		renderData.Colors.Add( color );
 		renderData.Colors.Add( color );
 		renderData.Colors.Add( color );
@@ -1189,7 +1189,6 @@ public class dfMarkupBoxText : dfMarkupBox
 		var uvs = renderData.UV;
 		var colors = renderData.Colors;
 
-		var offset = Vector3.zero;
 		var multiplier = (float)fontSize / (float)font.FontSize;
 		var descent = font.Descent * multiplier;
 
@@ -1217,10 +1216,10 @@ public class dfMarkupBoxText : dfMarkupBox
 			var quadRight = ( quadLeft + glyph.vert.width );
 			var quadBottom = ( quadTop + glyph.vert.height );
 
-			var v0 = offset + new Vector3( quadLeft, quadTop );
-			var v1 = offset + new Vector3( quadRight, quadTop );
-			var v2 = offset + new Vector3( quadRight, quadBottom );
-			var v3 = offset + new Vector3( quadLeft, quadBottom );
+			var v0 = new Vector3( quadLeft, quadTop );
+			var v1 = new Vector3( quadRight, quadTop );
+			var v2 = new Vector3( quadRight, quadBottom );
+			var v3 = new Vector3( quadLeft, quadBottom );
 
 			verts.Add( v0 );
 			verts.Add( v1 );

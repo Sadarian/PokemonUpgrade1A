@@ -40,6 +40,9 @@ public class dfProgressBar : dfControl
 	protected string progressSprite;
 
 	[SerializeField]
+	protected Color32 progressColor = UnityEngine.Color.white;
+
+	[SerializeField]
 	protected float rawValue = 0.25f;
 
 	[SerializeField]
@@ -118,6 +121,22 @@ public class dfProgressBar : dfControl
 			if( value != progressSprite )
 			{
 				progressSprite = value;
+				Invalidate();
+			}
+		}
+	}
+
+	/// <summary>
+	/// Gets or sets the color used when rendering the progress indicator sprite
+	/// </summary>
+	public Color32 ProgressColor
+	{
+		get { return this.progressColor; }
+		set
+		{
+			if( !Color32.Equals( value, progressColor ) )
+			{
+				this.progressColor = value;
 				Invalidate();
 			}
 		}
@@ -410,7 +429,7 @@ public class dfProgressBar : dfControl
 			fillSize.x = Mathf.Max( spriteInfo.border.horizontal, fillSize.x * lerp );
 		}
 
-		var color = ApplyOpacity( IsEnabled ? this.color : this.disabledColor );
+		var color = ApplyOpacity( IsEnabled ? this.ProgressColor : this.DisabledColor );
 		var options = new dfSprite.RenderOptions()
 		{
 			atlas = atlas,
@@ -442,7 +461,7 @@ public class dfProgressBar : dfControl
 			return;
 		}
 
-		var color = ApplyOpacity( IsEnabled ? this.color : this.disabledColor );
+		var color = ApplyOpacity( IsEnabled ? this.Color : this.DisabledColor );
 		var options = new dfSprite.RenderOptions()
 		{
 			atlas = atlas,

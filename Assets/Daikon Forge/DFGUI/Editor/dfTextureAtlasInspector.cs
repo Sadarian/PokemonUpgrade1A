@@ -54,7 +54,7 @@ public class dfTextureAtlasInspector : Editor
 			}
 
 			var saveFolder = Path.GetDirectoryName( AssetDatabase.GetAssetPath( selection[ 0 ] ) );
-			var prefabPath = EditorUtility.SaveFilePanel( "Create Font Definition", saveFolder, "Texture Atlas", "prefab" );
+			var prefabPath = EditorUtility.SaveFilePanel( "Create Texture Atlas", saveFolder, "Texture Atlas", "prefab" );
 			if( string.IsNullOrEmpty( prefabPath ) )
 				return;
 
@@ -71,7 +71,7 @@ public class dfTextureAtlasInspector : Editor
 			bytes = null;
 			DestroyImmediate( texture );
 
-			setAtlasTextureSettings( texturePath, FilterMode.Bilinear );
+			setAtlasTextureSettings( texturePath, FilterMode.Bilinear, true );
 
 			texture = AssetDatabase.LoadAssetAtPath( texturePath, typeof( Texture2D ) ) as Texture2D;
 			if( texture == null )
@@ -181,7 +181,7 @@ public class dfTextureAtlasInspector : Editor
 			bytes = null;
 			DestroyImmediate( newAtlasTexture );
 
-			setAtlasTextureSettings( texturePath, oldAtlasTexture.filterMode );
+			setAtlasTextureSettings( texturePath, oldAtlasTexture.filterMode, false );
 
 			// Fix up the new sprite locations
 			for( int i = 0; i < sprites.Count; i++ )
@@ -307,7 +307,7 @@ public class dfTextureAtlasInspector : Editor
 
 	}
 
-	private static void setAtlasTextureSettings( string path, FilterMode filterMode )
+	internal static void setAtlasTextureSettings( string path, FilterMode filterMode, bool createMode )
 	{
 
 		AssetDatabase.Refresh();
@@ -328,7 +328,12 @@ public class dfTextureAtlasInspector : Editor
 		settings.filterMode = filterMode;
 		settings.wrapMode = TextureWrapMode.Clamp;
 		settings.npotScale = TextureImporterNPOTScale.None;
-		settings.linearTexture = true;
+
+		if( createMode )
+		{
+			settings.linearTexture = true;
+		}
+
 		importer.SetTextureSettings( settings );
 
 		AssetDatabase.ImportAsset( path, ImportAssetOptions.ForceUpdate );
@@ -382,8 +387,8 @@ public class dfTextureAtlasInspector : Editor
 		ShowAddTextureOption( atlas );
 		ShowModifiedTextures( atlas );
 
-		GUILayout.Label( "Edit Sprite", "HeaderLabel" );
-		EditorGUIUtility.LookLikeControls( 94f );
+		using( dfEditorUtil.BeginGroup( "Edit Sprite" ) )
+		dfEditorUtil.LabelWidth = 94f;
 
 		EditSprite( "Edit Sprite" );
 
@@ -496,8 +501,8 @@ public class dfTextureAtlasInspector : Editor
 					if( textRect.Contains( evt.mousePosition ) )
 					{
 						var draggedObject = DragAndDrop.objectReferences.First() as GameObject;
-						var draggedFont = draggedObject != null ? draggedObject.GetComponent<dfAtlas>() : null;
-						DragAndDrop.visualMode = ( draggedFont != null ) ? DragAndDropVisualMode.Copy : DragAndDropVisualMode.None;
+						var draggedAtlas = draggedObject != null ? draggedObject.GetComponent<dfAtlas>() : null;
+						DragAndDrop.visualMode = ( draggedAtlas != null ) ? DragAndDropVisualMode.Copy : DragAndDropVisualMode.None;
 						if( evt.type == EventType.DragPerform )
 						{
 							selectionCallback( draggedObject );
@@ -509,7 +514,7 @@ public class dfTextureAtlasInspector : Editor
 
 			if( GUI.enabled && GUILayout.Button( new GUIContent( " ", "Edit Atlas" ), "IN ObjectField", GUILayout.Width( 14 ) ) )
 			{
-				dfEditorUtil.DelayedInvoke( (Action)( () =>
+				dfEditorUtil.DelayedInvoke( (System.Action)( () =>
 				{
 					var dialog = dfPrefabSelectionDialog.Show( "Select Texture Atlas", typeof( dfAtlas ), selectionCallback, dfTextureAtlasInspector.DrawAtlasPreview, null );
 					dialog.previewSize = 200;
@@ -549,12 +554,12 @@ public class dfTextureAtlasInspector : Editor
 	private void showSprites( dfAtlas atlas )
 	{
 
-		EditorGUIUtility.LookLikeControls( 100f );
+		dfEditorUtil.LabelWidth = 100f;
 		EditorGUI.indentLevel += 1;
 
 		EditorGUILayout.Separator();
 
-		GUILayout.Label( "Sprites", "HeaderLabel" );
+		using( dfEditorUtil.BeginGroup( "Sprites" ) )
 
 		if( showDeleteSelectedButton( atlas ) )
 		{
@@ -722,19 +727,22 @@ public class dfTextureAtlasInspector : Editor
 		if( modifiedSprites.Count == 0 )
 			return;
 
-		GUILayout.Label( "Modified Sprites", "HeaderLabel" );
-
-		var list = string.Join( "\n\t", modifiedSprites.Select( s => s.name ).ToArray() );
-		var message = string.Format( "The following textures have been modified:\n\t{0}", list );
-
-		EditorGUILayout.HelpBox( message, MessageType.Info );
-
-		var performUpdate = GUILayout.Button( "Refresh Modified Sprites" );
-		dfEditorUtil.DrawSeparator();
-
-		if( performUpdate )
+		using( dfEditorUtil.BeginGroup( "Modified Sprites" ) )
 		{
-			rebuildAtlas( atlas );
+
+			var list = string.Join( "\n\t", modifiedSprites.Select( s => s.name ).ToArray() );
+			var message = string.Format( "The following textures have been modified:\n\t{0}", list );
+
+			EditorGUILayout.HelpBox( message, MessageType.Info );
+
+			var performUpdate = GUILayout.Button( "Refresh Modified Sprites" );
+			dfEditorUtil.DrawSeparator();
+
+			if( performUpdate )
+			{
+				rebuildAtlas( atlas );
+			}
+
 		}
 
 	}
@@ -744,7 +752,7 @@ public class dfTextureAtlasInspector : Editor
 
 		dfEditorUtil.DrawSeparator();
 
-		GUILayout.Label( "Add Sprites", "HeaderLabel" );
+		using( dfEditorUtil.BeginGroup( "Add Sprites" ) )
 		{
 
 			EditorGUILayout.HelpBox( "You can drag and drop textures here to add them to the Texture Atlas", MessageType.Info );
@@ -817,7 +825,7 @@ public class dfTextureAtlasInspector : Editor
 				GUILayout.BeginVertical();
 				{
 
-					EditorGUIUtility.LookLikeControls( 50f );
+					dfEditorUtil.LabelWidth = 50f;
 
 					var x = EditorGUILayout.IntField( label1, (int)Math.Truncate( value.x ) );
 					var y = EditorGUILayout.IntField( label2, (int)Math.Truncate( value.y ) );
@@ -833,7 +841,7 @@ public class dfTextureAtlasInspector : Editor
 			}
 			GUILayout.EndHorizontal();
 
-			EditorGUIUtility.LookLikeControls( 100f );
+			dfEditorUtil.LabelWidth = 100f;
 
 			return retVal;
 
@@ -860,7 +868,7 @@ public class dfTextureAtlasInspector : Editor
 			GUILayout.BeginVertical();
 			{
 
-				EditorGUIUtility.LookLikeControls( 50f );
+				dfEditorUtil.LabelWidth = 50f;
 
 				retVal.left = Mathf.Max( 0, EditorGUILayout.IntField( leftLabel, value != null ? value.left : 0 ) );
 				retVal.right = Mathf.Max( 0, EditorGUILayout.IntField( rightLabel, value != null ? value.right : 0 ) );
@@ -875,7 +883,7 @@ public class dfTextureAtlasInspector : Editor
 		}
 		GUILayout.EndHorizontal();
 
-		EditorGUIUtility.LookLikeControls( 100f );
+		dfEditorUtil.LabelWidth = 100f;
 
 		if( EditorGUI.EndChangeCheck() )
 			return retVal;
@@ -909,7 +917,7 @@ public class dfTextureAtlasInspector : Editor
 
 			if( GUILayout.Button( new GUIContent( " ", "Edit " + label ), "IN ObjectField", GUILayout.Width( 12 ) ) )
 			{
-				dfEditorUtil.DelayedInvoke( (Action)( () =>
+				dfEditorUtil.DelayedInvoke( (System.Action)( () =>
 				{
 					dfSpriteSelectionDialog.Show( "Select Sprite: " + label, atlas, value, callback );
 				} ) );

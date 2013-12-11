@@ -27,8 +27,7 @@ public class dfTextboxInspector : dfControlInspector
 		if( !isFoldoutExpanded( foldouts, "Textbox Properties", true ) )
 			return false;
 
-		EditorGUIUtility.LookLikeControls( 110f );
-		EditorGUI.indentLevel += 1;
+		dfEditorUtil.LabelWidth = 110f;
 
 		SelectTextureAtlas( "Atlas", control, "Atlas", false, true );
 		if( !dfAtlas.Equals( control.Atlas, control.GUIManager.DefaultAtlas ) )
@@ -36,7 +35,7 @@ public class dfTextboxInspector : dfControlInspector
 			EditorGUILayout.HelpBox( "This control does not use the same Texture Atlas as the View, which will result in an additional draw call.", MessageType.Info );
 		}
 
-		GUILayout.Label( "Data", "HeaderLabel" );
+		using( dfEditorUtil.BeginGroup( "Data" ) )
 		{
 
 			var text = EditorGUILayout.TextField( "Text", control.Text );
@@ -48,7 +47,7 @@ public class dfTextboxInspector : dfControlInspector
 
 		}
 
-		GUILayout.Label( "General", "HeaderLabel" );
+		using( dfEditorUtil.BeginGroup( "General" ) )
 		{
 
 			var readOnly = EditorGUILayout.Toggle( "Read Only", control.ReadOnly );
@@ -103,7 +102,7 @@ public class dfTextboxInspector : dfControlInspector
 
 		}
 
-		GUILayout.Label( "Mobile", "HeaderLabel" );
+		using( dfEditorUtil.BeginGroup( "Mobile" ) )
 		{
 
 			var useKeyboard = EditorGUILayout.Toggle( "Show Keyboard", control.UseMobileKeyboard );
@@ -148,10 +147,10 @@ public class dfTextboxInspector : dfControlInspector
 		
 		}
 
-		GUILayout.Label( "Text Appearance", "HeaderLabel" );
+		using( dfEditorUtil.BeginGroup( "Text Appearance" ) )
 		{
 
-			SelectFontDefinition( "Font", control.Atlas, control, "Font", true );
+			SelectFontDefinition( "Font", control.Atlas, control, "Font", true, true );
 
 			if( control.Font == null )
 				return false;
@@ -184,7 +183,7 @@ public class dfTextboxInspector : dfControlInspector
 				control.TextScaleMode = scaleMode;
 			}
 
-			var padding = EditPadding( "Padding", control.Padding );
+			var padding = dfEditorUtil.EditPadding( "Padding", control.Padding );
 			if( padding != control.Padding )
 			{
 				dfEditorUtil.MarkUndo( control, "Change Textbox Padding" );
@@ -221,20 +220,20 @@ public class dfTextboxInspector : dfControlInspector
 					control.ShadowColor = shadowColor;
 				}
 
-				var shadowOffset = EditInt2( "Shadow Offset", "X", "Y", control.ShadowOffset );
+				var shadowOffset = dfEditorUtil.EditInt2( "Shadow Offset", "X", "Y", control.ShadowOffset );
 				if( shadowOffset != control.ShadowOffset )
 				{
 					dfEditorUtil.MarkUndo( control, "Change Shadow Color" );
 					control.ShadowOffset = shadowOffset;
 				}
 
-				EditorGUIUtility.LookLikeControls( 120f );
+				dfEditorUtil.LabelWidth = 120f;
 
 			}
 
 		}
 
-		GUILayout.Label( "Images", "HeaderLabel" );
+		using( dfEditorUtil.BeginGroup( "Images" ) )
 		{
 			
 			SelectSprite( "Normal", control.Atlas, control, "BackgroundSprite" );

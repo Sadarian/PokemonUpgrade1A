@@ -25,7 +25,7 @@ public class HandleDrag : MonoBehaviour
 	private void Init()
 	{
 		startPosition = gameObject.transform.position;
-		rootPosition = transform.parent.GetComponent<dfControl>().RelativePosition + transform.parent.parent.GetComponent<dfControl>().RelativePosition;
+		rootPosition = new Vector2(GetComponent<dfControl>().GetGUIScreenPos().x - sprite.Size.x, GetComponent<dfControl>().GetGUIScreenPos().y - sprite.Size.y);
 		init = true;
 	}
 

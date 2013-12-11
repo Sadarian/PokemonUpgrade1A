@@ -17,10 +17,9 @@ public class ProxyPropertyBindingEditor : Editor
 
 		var binder = target as dfProxyPropertyBinding;
 
-		EditorGUIUtility.LookLikeControls( 100f );
-		EditorGUI.indentLevel += 1;
+		dfEditorUtil.LabelWidth = 100f;
 
-		GUILayout.Label( "Data Source", "HeaderLabel" );
+		using( dfEditorUtil.BeginGroup( "Data Source" ) )
 		{
 
 			if( binder.DataSource == null )
@@ -91,7 +90,7 @@ public class ProxyPropertyBindingEditor : Editor
 			return;
 		}
 
-		GUILayout.Label( "Data Target", "HeaderLabel" );
+		using( dfEditorUtil.BeginGroup( "Data Target" ) )
 		{
 
 			if( binder.DataSource == null )
@@ -146,7 +145,7 @@ public class ProxyPropertyBindingEditor : Editor
 
 		}
 
-		GUILayout.Label( "Synchronization", "HeaderLabel" );
+		using( dfEditorUtil.BeginGroup( "Synchronization" ) )
 		{
 
 			var twoWay = EditorGUILayout.Toggle( "Two way", binder.TwoWay );

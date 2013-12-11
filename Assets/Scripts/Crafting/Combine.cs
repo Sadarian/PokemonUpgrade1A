@@ -34,7 +34,7 @@ public class Combine : MonoBehaviour
 			comb[0] = air;
 			comb[1] = earth;
 			comb[2] = fire;
-			comb[3] = water;
+			comb[3] = water;;
 		}
 
 		public void Clear()
@@ -42,7 +42,7 @@ public class Combine : MonoBehaviour
 			for (int i = 0; i < comb.Length; i++)
 			{
 				comb[i] = 0;
-			}
+			};
 		}
 
 		public static bool operator ==(Combination c1, Combination c2)
@@ -69,9 +69,8 @@ public class Combine : MonoBehaviour
 
 		TextAsset textAsset = (TextAsset)Resources.Load("UpgradeTree", typeof(TextAsset));
 		if (textAsset == null) { Debug.LogError("Missing Resources/UpgradeTree.txt !"); return; };
-		//Debug.Log(textAsset);
+
 		jsonCobinationList = JSONParser.parse(textAsset.text);
-		//Debug.Log("Waves loaded:" + jsonCobinations["Name"]);
 
 		JSONObject jsonComb = jsonCobinationList["Combinations"];
 
@@ -123,6 +122,87 @@ public class Combine : MonoBehaviour
 					case GameController.Materials.Water:
 						{
 							curCombination.comb[3]++;
+							break;
+						}
+					case GameController.Materials.GreatAir:
+						{
+							if (curSprite.SpriteName.Contains("1"))
+							{
+								curCombination.comb[4] += 2;
+								break;
+							}
+							if (curSprite.SpriteName.Contains("2"))
+							{
+								curCombination.comb[4] += 3;
+								break;
+							}
+							if (curSprite.SpriteName.Contains("3"))
+							{
+								curCombination.comb[4] += 4;
+								break;
+							}
+
+							curCombination.comb[4]++;
+							break;
+						}
+					case GameController.Materials.GreatEarth:
+						{
+							if (curSprite.SpriteName.Contains("1"))
+							{
+								curCombination.comb[5] += 2;
+								break;
+							}
+							if (curSprite.SpriteName.Contains("2"))
+							{
+								curCombination.comb[5] += 3;
+								break;
+							}
+							if (curSprite.SpriteName.Contains("3"))
+							{
+								curCombination.comb[5] += 4;
+								break;
+							}
+							curCombination.comb[5]++;
+							break;
+						}
+					case GameController.Materials.GreatFire:
+						{
+							if (curSprite.SpriteName.Contains("1"))
+							{
+								curCombination.comb[6] += 2;
+								break;
+							}
+							if (curSprite.SpriteName.Contains("2"))
+							{
+								curCombination.comb[6] += 3;
+								break;
+							}
+							if (curSprite.SpriteName.Contains("3"))
+							{
+								curCombination.comb[6] += 4;
+								break;
+							}
+							curCombination.comb[6]++;
+							break;
+						}
+					case GameController.Materials.GreatWater:
+						{
+							if (curSprite.SpriteName.Contains("1"))
+							{
+								curCombination.comb[7] += 2;
+								break;
+							}
+							if (curSprite.SpriteName.Contains("2"))
+							{
+								curCombination.comb[7] += 3;
+								break;
+							}
+							if (curSprite.SpriteName.Contains("3"))
+							{
+								curCombination.comb[7] += 4;
+								break;
+							}
+							curCombination.comb[7]++;
 							break;
 						}
 				}

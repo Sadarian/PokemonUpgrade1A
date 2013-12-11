@@ -28,10 +28,9 @@ public class dfDropdownListInspector : dfControlInspector
 		if( !isFoldoutExpanded( foldouts, "DropdownList Properties", true ) )
 			return false;
 
-		EditorGUIUtility.LookLikeControls( 110f );
-		EditorGUI.indentLevel += 1;
+		dfEditorUtil.LabelWidth = 110f;
 
-		GUILayout.Label( "Dropdown List", "HeaderLabel" );
+		using( dfEditorUtil.BeginGroup( "Dropdown List" ) )
 		{
 
 			var trigger = EditorGUILayout.ObjectField( "Trigger", control.TriggerButton, typeof( dfControl ), true ) as dfControl;
@@ -39,6 +38,13 @@ public class dfDropdownListInspector : dfControlInspector
 			{
 				dfEditorUtil.MarkUndo( control, "Change trigger button" );
 				control.TriggerButton = trigger;
+			}
+
+			var triggerOnMouse = EditorGUILayout.Toggle( "Click Open", control.OpenOnMouseDown );
+			if( triggerOnMouse != control.OpenOnMouseDown )
+			{
+				dfEditorUtil.MarkUndo( control, "Change trigger action" );
+				control.OpenOnMouseDown = triggerOnMouse;
 			}
 
 			var index = EditorGUILayout.IntSlider( "Selected Index", control.SelectedIndex, -1, control.Items.Length - 1 );
@@ -50,7 +56,7 @@ public class dfDropdownListInspector : dfControlInspector
 
 		}
 
-		GUILayout.Label( "Images", "HeaderLabel" );
+		using( dfEditorUtil.BeginGroup( "Images" ) )
 		{
 
 			SelectTextureAtlas( "Atlas", control, "Atlas", false, true );
@@ -62,10 +68,10 @@ public class dfDropdownListInspector : dfControlInspector
 
 		}
 
-		GUILayout.Label( "Text Appearance", "HeaderLabel" );
+		using( dfEditorUtil.BeginGroup( "Text Appearance" ) )
 		{
 
-			SelectFontDefinition( "Font", control.Atlas, control, "Font", true );
+			SelectFontDefinition( "Font", control.Atlas, control, "Font", true, true );
 
 			if( control.Font == null )
 				return false;
@@ -84,7 +90,7 @@ public class dfDropdownListInspector : dfControlInspector
 				control.TextScale = textScale;
 			}
 
-			var padding = EditPadding( "Padding", control.TextFieldPadding );
+			var padding = dfEditorUtil.EditPadding( "Padding", control.TextFieldPadding );
 			if( padding != control.TextFieldPadding )
 			{
 				dfEditorUtil.MarkUndo( control, "Change control Padding" );
@@ -108,7 +114,7 @@ public class dfDropdownListInspector : dfControlInspector
 					control.ShadowColor = shadowColor;
 				}
 
-				var shadowOffset = EditInt2( "Shadow Offset", "X", "Y", control.ShadowOffset );
+				var shadowOffset = dfEditorUtil.EditInt2( "Shadow Offset", "X", "Y", control.ShadowOffset );
 				if( shadowOffset != control.ShadowOffset )
 				{
 					dfEditorUtil.MarkUndo( control, "Change Shadow Color" );
@@ -119,14 +125,14 @@ public class dfDropdownListInspector : dfControlInspector
 
 		}
 
-		GUILayout.Label( "List Appearance", "HeaderLabel" );
+		using( dfEditorUtil.BeginGroup( "List Appearance" ) )
 		{
 			SelectSprite( "List Background", control.Atlas, control, "ListBackground" );
 			SelectSprite( "Item Highlight", control.Atlas, control, "ItemHighlight", false );
 			SelectSprite( "Item Hover", control.Atlas, control, "ItemHover", false );
 		}
 
-		GUILayout.Label( "List Options", "HeaderLabel" );
+		using( dfEditorUtil.BeginGroup( "List Options" ) )
 		{
 
 			dfPrefabSelectionDialog.FilterCallback filterScrollbar = ( item ) =>
@@ -166,14 +172,14 @@ public class dfDropdownListInspector : dfControlInspector
 				control.MaxListHeight = maxHeight;
 			}
 
-			var listOffset = EditInt2( "Offset", "X", "Y", control.ListOffset );
+			var listOffset = dfEditorUtil.EditInt2( "Offset", "X", "Y", control.ListOffset );
 			if( listOffset != control.ListOffset )
 			{
 				dfEditorUtil.MarkUndo( control, "Change list offset" );
 				control.ListOffset = listOffset;
 			}
 
-			var listPadding = EditPadding( "Padding", control.ListPadding );
+			var listPadding = dfEditorUtil.EditPadding( "Padding", control.ListPadding );
 			if( !listPadding.Equals( control.ListPadding ) )
 			{
 				dfEditorUtil.MarkUndo( control, "Modify padding" );
@@ -182,7 +188,7 @@ public class dfDropdownListInspector : dfControlInspector
 
 		}
 
-		GUILayout.Label( "List Data", "HeaderLabel" );
+		using( dfEditorUtil.BeginGroup( "List Data" ) )
 		{
 			EditOptions( control );
 		}

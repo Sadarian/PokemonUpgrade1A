@@ -167,28 +167,38 @@ public class dfFontDefinitionInspector : Editor
 				if( field == null )
 					continue;
 
-				var convertedValue = (object)null;
-				if( field.FieldType == typeof( bool ) )
+				try
 				{
-					convertedValue = ( value != "0" );
-				}
-				else if( !field.FieldType.IsArray )
-				{
-					convertedValue = Convert.ChangeType( value, field.FieldType );
-				}
-				else
-				{
-					var elementType = field.FieldType.GetElementType();
-					var elements = ( (string)value ).Split( ',' );
-					var array = Array.CreateInstance( elementType, elements.Length );
-					for( int i = 0; i < elements.Length; i++ )
-					{
-						array.SetValue( Convert.ChangeType( elements[ i ], elementType ), i );
-					}
-					convertedValue = array;
-				}
 
-				field.SetValue( font, convertedValue );
+					var convertedValue = (object)null;
+					if( field.FieldType == typeof( bool ) )
+					{
+						convertedValue = ( value != "0" );
+					}
+					else if( !field.FieldType.IsArray )
+					{
+						convertedValue = Convert.ChangeType( value, field.FieldType );
+					}
+					else
+					{
+						var elementType = field.FieldType.GetElementType();
+						var elements = ( (string)value ).Split( ',' );
+						var array = Array.CreateInstance( elementType, elements.Length );
+						for( int i = 0; i < elements.Length; i++ )
+						{
+							array.SetValue( Convert.ChangeType( elements[ i ], elementType ), i );
+						}
+						convertedValue = array;
+					}
+
+					field.SetValue( font, convertedValue );
+
+				}
+				catch( Exception err )
+				{
+					var errmsg = string.Format( "Failed to set property {0} to value {1} - {2}", key, value, err.Message );
+					Debug.LogError( errmsg );
+				}
 
 			}
 
@@ -227,7 +237,7 @@ public class dfFontDefinitionInspector : Editor
 
 		var font = this.target as dfFont;
 
-		EditorGUIUtility.LookLikeControls( 90f );
+		dfEditorUtil.LabelWidth = 90f;
 
 		SelectTextureAtlas( "Atlas", font, "Atlas", false, true );
 
@@ -356,7 +366,7 @@ public class dfFontDefinitionInspector : Editor
 			if( glyph == null )
 				continue;
 
-			if( x + glyph.XAdvance > rect.width )
+			if( x + glyph.xadvance > rect.width )
 			{
 				x = 0;
 				y += font.LineHeight;
@@ -364,20 +374,20 @@ public class dfFontDefinitionInspector : Editor
 					break;
 			}
 
-			var xofs = x + ( x > 0 ? glyph.XOffset : 0 );
-			var yofs = y + glyph.YOffset;
-			var glyphRect = new Rect( rect.x + xofs, rect.y + yofs, glyph.Width, glyph.Height );
+			var xofs = x + ( x > 0 ? glyph.xoffset : 0 );
+			var yofs = y + glyph.yoffset;
+			var glyphRect = new Rect( rect.x + xofs, rect.y + yofs, glyph.width, glyph.height );
 
 			var uv = new Rect(
-				(float)glyph.X * width,
-				1f - (float)glyph.Y * height - (float)glyph.Height * height,
-				(float)glyph.Width * width,
-				(float)glyph.Height * height
+				(float)glyph.x * width,
+				1f - (float)glyph.y * height - (float)glyph.height * height,
+				(float)glyph.width * width,
+				(float)glyph.height * height
 			);
 
 			GUI.DrawTextureWithTexCoords( glyphRect, texture, uv, true );
 
-			x += glyph.XAdvance;
+			x += glyph.xadvance;
 
 		}
 

@@ -1,3 +1,7 @@
+#define USE_NEW_BMFONT_RENDERER
+// Uncomment the preceeding line if you wish to revert to the old 
+// bitmapped font renderer
+
 /* Copyright 2013 Daikon Forge */
 using UnityEngine;
 using UnityEditor;
@@ -30,10 +34,9 @@ public class dfLabelInspector : dfControlInspector
 
 		var control = target as dfLabel;
 
-		EditorGUIUtility.LookLikeControls( 120f );
-		EditorGUI.indentLevel += 1;
+		dfEditorUtil.LabelWidth = 120f;
 
-		GUILayout.Label( "Atlas", "HeaderLabel" );
+		using( dfEditorUtil.BeginGroup( "Atlas" ) )
 		{
 
 			SelectTextureAtlas( "Atlas", control, "Atlas", false, true );
@@ -42,7 +45,7 @@ public class dfLabelInspector : dfControlInspector
 				EditorGUILayout.HelpBox( "This control does not use the same Texture Atlas as the View, which will result in an additional draw call.", MessageType.Info );
 			}
 
-			SelectFontDefinition( "Font", control.Atlas, control, "Font", true );
+			SelectFontDefinition( "Font", control.Atlas, control, "Font", true, true );
 			SelectSprite( "Background", control.Atlas, control, "BackgroundSprite", false );
 
 		}
@@ -50,7 +53,7 @@ public class dfLabelInspector : dfControlInspector
 		if( control.Font == null )
 			return false;
 
-		GUILayout.Label( "Appearance", "HeaderLabel" );
+		using( dfEditorUtil.BeginGroup( "Appearance" ) )
 		{
 
 			var autoSize = EditorGUILayout.Toggle( "Auto Size", control.AutoSize && !control.AutoHeight );
@@ -97,7 +100,26 @@ public class dfLabelInspector : dfControlInspector
 
 		}
 
-		GUILayout.Label( "Tabs", "HeaderLabel" );
+		using( dfEditorUtil.BeginGroup( "Colors" ) )
+		{
+
+			var textColor = EditorGUILayout.ColorField( "Text Color", control.Color );
+			if( textColor != control.Color )
+			{
+				dfEditorUtil.MarkUndo( control, "Change Text Color" );
+				control.Color = textColor;
+			}
+
+			var backColor = EditorGUILayout.ColorField( "Back Color", control.BackgroundColor );
+			if( backColor != control.BackgroundColor )
+			{
+				dfEditorUtil.MarkUndo( control, "Change Background Color" );
+				control.BackgroundColor = backColor;
+			}
+
+		}
+
+		using( dfEditorUtil.BeginGroup( "Tabs" ) )
 		{
 
 			var tabSize = EditorGUILayout.IntField( "Tab Size", control.TabSize );
@@ -107,6 +129,7 @@ public class dfLabelInspector : dfControlInspector
 				control.TabSize = tabSize;
 			}
 
+#if !USE_NEW_BMFONT_RENDERER
 			var tabStops = control.TabStops;
 
 			var tabStopCount = Mathf.Max( EditorGUILayout.IntField( "Tab Stops", tabStops.Count ), 0 );
@@ -149,9 +172,11 @@ public class dfLabelInspector : dfControlInspector
 
 			EditorGUI.indentLevel -= 1;
 
+#endif
+
 		}
 
-		GUILayout.Label( "Formatting", "HeaderLabel" );
+		using( dfEditorUtil.BeginGroup( "Formatting" ) )
 		{
 
 			var align = (TextAlignment)EditorGUILayout.EnumPopup( "Text Align", control.TextAlignment );
@@ -184,16 +209,16 @@ public class dfLabelInspector : dfControlInspector
 
 			GUI.enabled = markup;
 
-			var colorize = EditorGUILayout.Toggle( "Colorize Symbols", control.ColorizeSymbols && markup );
+			var colorize = EditorGUILayout.Toggle( "Colorize Sprites", control.ColorizeSymbols && markup );
 			if( colorize != control.ColorizeSymbols )
 			{
-				dfEditorUtil.MarkUndo( control, "Change Colorize Symbols" );
+				dfEditorUtil.MarkUndo( control, "Change Colorize Sprites" );
 				control.ColorizeSymbols = colorize;
 			}
 
 			GUI.enabled = true;
 
-			var padding = EditPadding( "Padding", control.Padding );
+			var padding = dfEditorUtil.EditPadding( "Padding", control.Padding );
 			if( padding != control.Padding )
 			{
 				dfEditorUtil.MarkUndo( control, "Change Padding" );
@@ -202,7 +227,7 @@ public class dfLabelInspector : dfControlInspector
 
 		}
 
-		GUILayout.Label( "Text Effects", "HeaderLabel" );
+		using( dfEditorUtil.BeginGroup( "Text Effects" ) )
 		{
 
 			var showGradient = EditorGUILayout.Toggle( "Draw Gradient", control.ShowGradient );
@@ -284,7 +309,7 @@ public class dfLabelInspector : dfControlInspector
 					control.ShadowColor = shadowColor;
 				}
 
-				var shadowOffset = EditInt2( "Shadow Offset", "X", "Y", control.ShadowOffset );
+				var shadowOffset = dfEditorUtil.EditInt2( "Shadow Offset", "X", "Y", control.ShadowOffset );
 				if( shadowOffset != control.ShadowOffset )
 				{
 					dfEditorUtil.MarkUndo( control, "Change Shadow Color" );
@@ -298,21 +323,21 @@ public class dfLabelInspector : dfControlInspector
 		}
 
 		var showDialog = false;
-		GUILayout.Label( "Text", "HeaderLabel" );
+		using( dfEditorUtil.BeginGroup( "Text" ) )
 		{
 
 			GUI.SetNextControlName( "Text" );
-			var text = EditorGUILayout.TextArea( control.Text, GUI.skin.textArea, GUILayout.Height( 100f ) );
+			var text = EditorGUILayout.TextArea( control.Text, GUI.skin.textArea, GUILayout.Height( 200f ) );
 			if( text != control.Text )
 			{
 				dfEditorUtil.MarkUndo( control, "Change label Text" );
 				control.Text = text;
 			}
 
-			if( GUILayout.Button( "Open Editor" ) )
-			{
-				showDialog = true;
-			}
+			//if( GUILayout.Button( "Open Editor" ) )
+			//{
+			//    showDialog = true;
+			//}
 
 		}
 

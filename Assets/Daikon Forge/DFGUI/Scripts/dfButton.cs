@@ -16,7 +16,7 @@ using System.Collections.Generic;
 [ExecuteInEditMode]
 [RequireComponent( typeof( BoxCollider ) )]
 [AddComponentMenu( "Daikon Forge/User Interface/Button" )]
-public class dfButton : dfInteractiveBase
+public class dfButton : dfInteractiveBase, IDFMultiRender
 {
 
 	#region Public enums
@@ -64,7 +64,7 @@ public class dfButton : dfInteractiveBase
 	#region Protected serialized members
 
 	[SerializeField]
-	protected dfFont font;
+	protected dfFontBase font;
 
 	[SerializeField]
 	protected string pressedSprite;
@@ -97,7 +97,16 @@ public class dfButton : dfInteractiveBase
 	protected Color32 focusText = UnityEngine.Color.white;
 
 	[SerializeField]
-	protected Color32 disabledText = UnityEngine.Color.white; 
+	protected Color32 disabledText = UnityEngine.Color.white;
+
+	[SerializeField]
+	protected Color32 hoverColor = UnityEngine.Color.white;
+
+	[SerializeField]
+	protected Color32 pressedColor = UnityEngine.Color.white;
+
+	[SerializeField]
+	protected Color32 focusColor = UnityEngine.Color.white;
 
 	[SerializeField]
 	protected float textScale = 1f;
@@ -262,7 +271,7 @@ public class dfButton : dfInteractiveBase
 	/// Gets or sets the <see cref="dfFont"/> instance that will be used 
 	/// to render the button's caption
 	/// </summary>
-	public dfFont Font
+	public dfFontBase Font
 	{
 		get
 		{
@@ -318,7 +327,7 @@ public class dfButton : dfInteractiveBase
 
 	/// <summary>
 	/// Gets or sets the Color that will be used when rendering the 
-	/// button's caption in its Hover state
+	/// button's caption when in the Hover state
 	/// </summary>
 	public Color32 HoverTextColor
 	{
@@ -326,6 +335,20 @@ public class dfButton : dfInteractiveBase
 		set
 		{
 			this.hoverText = value;
+			Invalidate();
+		}
+	}
+
+	/// <summary>
+	/// Gets or sets the Color that will be used when rendering the 
+	/// button's sprite when in the Hover state
+	/// </summary>
+	public Color32 HoverBackgroundColor
+	{
+		get { return this.hoverColor; }
+		set
+		{
+			this.hoverColor = value;
 			Invalidate();
 		}
 	}
@@ -346,6 +369,20 @@ public class dfButton : dfInteractiveBase
 
 	/// <summary>
 	/// Gets or sets the Color that will be used when rendering the 
+	/// button's sprite when in the Pressed state
+	/// </summary>
+	public Color32 PressedBackgroundColor
+	{
+		get { return this.pressedColor; }
+		set
+		{
+			this.pressedColor = value;
+			Invalidate();
+		}
+	}
+
+	/// <summary>
+	/// Gets or sets the Color that will be used when rendering the 
 	/// button's caption in its Focused state
 	/// </summary>
 	public Color32 FocusTextColor
@@ -354,6 +391,20 @@ public class dfButton : dfInteractiveBase
 		set
 		{
 			this.focusText = value;
+			Invalidate();
+		}
+	}
+
+	/// <summary>
+	/// Gets or sets the Color that will be used when rendering the 
+	/// button's sprite when in the Focus state
+	/// </summary>
+	public Color32 FocusBackgroundColor
+	{
+		get { return this.focusColor; }
+		set
+		{
+			this.focusColor = value;
 			Invalidate();
 		}
 	}
@@ -593,7 +644,11 @@ public class dfButton : dfInteractiveBase
 	protected internal override void OnMouseDown( dfMouseEventArgs args )
 	{
 
-		this.State = ButtonState.Pressed;
+		// Active tabs do not display pressed state
+		if( !( this.parent is dfTabstrip ) || this.State != ButtonState.Focus )
+		{
+			this.State = ButtonState.Pressed;
+		}
 
 		base.OnMouseDown( args );
 
@@ -605,7 +660,17 @@ public class dfButton : dfInteractiveBase
 #if !UNITY_IPHONE && !UNITY_ANDROID
 		if( isMouseHovering )
 		{
-			this.State = ButtonState.Hover;
+
+			// Active tabs do not display hover state
+			if( this.parent is dfTabstrip && this.ContainsFocus )
+			{
+				this.State = ButtonState.Focus;
+			}
+			else
+			{
+				this.State = ButtonState.Hover;
+			}
+
 		}
 		else
 #endif
@@ -626,7 +691,13 @@ public class dfButton : dfInteractiveBase
 	{
 
 #if !UNITY_IPHONE && !UNITY_ANDROID
-		this.State = ButtonState.Hover;
+
+		// Active tabs do not display hover state
+		if( !( this.parent is dfTabstrip ) || this.State != ButtonState.Focus )
+		{
+			this.State = ButtonState.Hover;
+		}
+
 #endif
 		base.OnMouseEnter( args );
 
@@ -682,22 +753,39 @@ public class dfButton : dfInteractiveBase
 
 	}
 
-	protected override void OnRebuildRenderData()
-	{
+	//protected override void OnRebuildRenderData()
+	//{
 
-		if( Atlas == null )
-			return;
+	//    if( Atlas == null )
+	//        return;
 
-		renderData.Material = Atlas.Material;
+	//    renderData.Material = Atlas.Material;
 
-		renderBackground();
-		renderText();
+	//    renderBackground();
+	//    renderText();
 
-	}
+	//}
 
 	#endregion
 
 	#region Private utility methods
+
+	protected override Color32 getActiveColor()
+	{
+		switch( this.State )
+		{
+			case ButtonState.Focus:
+				return this.FocusBackgroundColor;
+			case ButtonState.Hover:
+				return this.HoverBackgroundColor;
+			case ButtonState.Pressed:
+				return this.PressedBackgroundColor;
+			case ButtonState.Disabled:
+				return this.DisabledColor;
+			default:
+				return this.Color;
+		}
+	}
 
 	private void autoSizeToText()
 	{
@@ -717,49 +805,56 @@ public class dfButton : dfInteractiveBase
 
 	}
 
-	private void renderText()
+	private dfRenderData renderText()
 	{
 
 		if( Font == null || !Font.IsValid || string.IsNullOrEmpty( Text ) )
-			return;
+			return null;
+
+		var buffer = renderData;
+		if( font is dfDynamicFont )
+		{
+
+			var dynamicFont = (dfDynamicFont)font;
+
+			buffer = textRenderData;
+			buffer.Clear();
+			buffer.Material = dynamicFont.Material;
+
+		}
 
 		using( var textRenderer = obtainTextRenderer() )
 		{
-			textRenderer.Render( text, renderData );
+			textRenderer.Render( text, buffer );
 		}
+
+		return buffer;
 
 	}
 
 	private dfFontRendererBase obtainTextRenderer()
 	{
 
+		var clientSize = this.Size - new Vector2( padding.horizontal, padding.vertical );
+
+		var effectiveSize = this.autoSize ? Vector2.one * int.MaxValue : clientSize;
+
 		var p2u = PixelsToUnits();
-		var maxSize = new Vector2( this.size.x - padding.horizontal, this.size.y - padding.vertical );
-		if( AutoSize )
-		{
-			maxSize = Vector2.one * int.MaxValue;
-		}
+		var origin = ( pivot.TransformToUpperLeft( Size ) + new Vector3( padding.left, -padding.top ) ) * p2u;
 
-		var pivotOffset = pivot.TransformToUpperLeft( Size );
-		var origin = new Vector3(
-			pivotOffset.x + padding.left,
-			pivotOffset.y - padding.top,
-			0
-		) * p2u;
-
+		var effectiveTextScale = TextScale * getTextScaleMultiplier();
 		var renderColor = ApplyOpacity( getTextColorForState() );
 
-		var scaleMultiplier = getTextScaleMultiplier();
-		
-		var textRenderer = font.ObtainRenderer();
-
-		textRenderer.WordWrap = wordWrap;
-		textRenderer.MultiLine = wordWrap;
-		textRenderer.MaxSize = maxSize;
+		var textRenderer = Font.ObtainRenderer();
+		textRenderer.WordWrap = this.WordWrap;
+		textRenderer.MultiLine = this.WordWrap;
+		textRenderer.MaxSize = effectiveSize;
 		textRenderer.PixelRatio = p2u;
-		textRenderer.TextScale = TextScale * scaleMultiplier;
-		textRenderer.VectorOffset = origin;
-		textRenderer.TextAlign = TextAlignment;
+		textRenderer.TextScale = effectiveTextScale;
+		textRenderer.CharacterSpacing = 0;
+		textRenderer.VectorOffset = origin.Quantize( p2u );
+		textRenderer.TabSize = 0;
+		textRenderer.TextAlign = autoSize ? TextAlignment.Left : this.TextAlignment;
 		textRenderer.ProcessMarkup = true;
 		textRenderer.DefaultColor = renderColor;
 		textRenderer.OverrideMarkupColors = false;
@@ -768,7 +863,14 @@ public class dfButton : dfInteractiveBase
 		textRenderer.ShadowColor = ShadowColor;
 		textRenderer.ShadowOffset = ShadowOffset;
 
-		if( !AutoSize && this.vertAlign != dfVerticalAlignment.Top )
+		var dynamicFontRenderer = textRenderer as dfDynamicFont.DynamicFontRenderer;
+		if( dynamicFontRenderer != null )
+		{
+			dynamicFontRenderer.SpriteAtlas = this.Atlas;
+			dynamicFontRenderer.SpriteBuffer = renderData;
+		}
+
+		if( this.vertAlign != dfVerticalAlignment.Top )
 		{
 			textRenderer.VectorOffset = getVertAlignOffset( textRenderer );
 		}
@@ -776,7 +878,7 @@ public class dfButton : dfInteractiveBase
 		return textRenderer;
 
 	}
-
+	
 	private float getTextScaleMultiplier()
 	{
 
@@ -890,6 +992,67 @@ public class dfButton : dfInteractiveBase
 	}
 
 	#endregion 
+
+	#region IDFMultiRender Members
+
+	private dfRenderData textRenderData = null;
+	private dfList<dfRenderData> buffers = dfList<dfRenderData>.Obtain();
+
+	public dfList<dfRenderData> RenderMultiple()
+	{
+
+		if( !isVisible )
+		{
+			return null;
+		}
+
+		if( renderData == null )
+		{
+			renderData = dfRenderData.Obtain();
+			textRenderData = dfRenderData.Obtain();
+			isControlInvalidated = true;
+		}
+
+		if( !isControlInvalidated )
+		{
+			for( int i = 0; i < buffers.Count; i++ )
+			{
+				buffers[ i ].Transform = transform.localToWorldMatrix;
+			}
+			return buffers;
+		}
+
+		isControlInvalidated = false;
+
+		buffers.Clear();
+		renderData.Clear();
+
+		if( Atlas != null )
+		{
+
+			renderData.Material = Atlas.Material;
+			renderData.Transform = this.transform.localToWorldMatrix;
+
+			renderBackground();
+			buffers.Add( renderData );
+
+		}
+
+		var textBuffer = renderText();
+		if( textBuffer != null && textBuffer != renderData )
+		{
+			textBuffer.Transform = this.transform.localToWorldMatrix;
+			buffers.Add( textBuffer );
+		}
+
+		// Make sure that the collider size always matches the control
+		updateCollider();
+
+		return buffers;
+
+	}
+
+	#endregion
 
 }
 

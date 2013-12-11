@@ -2,6 +2,7 @@ using System;
 
 using UnityEngine;
 
+[AddComponentMenu( "Daikon Forge/Examples/General/Load Level On Click" )]
 [Serializable]
 public class LoadLevelByName : MonoBehaviour
 {

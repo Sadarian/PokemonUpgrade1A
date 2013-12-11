@@ -17,7 +17,7 @@ using System.Collections.Generic;
 [ExecuteInEditMode]
 [RequireComponent( typeof( BoxCollider ) )]
 [AddComponentMenu( "Daikon Forge/User Interface/Label" )]
-public class dfLabel : dfControl
+public class dfLabel : dfControl, IDFMultiRender
 {
 
 	#region Public events 
@@ -35,10 +35,13 @@ public class dfLabel : dfControl
 	protected dfAtlas atlas;
 
 	[SerializeField]
-	protected dfFont font;
+	protected dfFontBase font;
 
 	[SerializeField]
 	protected string backgroundSprite;
+
+	[SerializeField]
+	protected Color32 backgroundColor = UnityEngine.Color.white;
 
 	[SerializeField]
 	protected bool autoSize = false;
@@ -143,7 +146,7 @@ public class dfLabel : dfControl
 	/// Gets or sets the <see cref="dfFont"/> instance that will be used 
 	/// to render the text
 	/// </summary>
-	public dfFont Font
+	public dfFontBase Font
 	{
 		get 
 		{
@@ -179,6 +182,22 @@ public class dfLabel : dfControl
 			if( value != backgroundSprite )
 			{
 				backgroundSprite = value;
+				Invalidate();
+			}
+		}
+	}
+
+	/// <summary>
+	/// Gets or set the color that will be applied to the background sprite
+	/// </summary>
+	public Color32 BackgroundColor
+	{
+		get { return backgroundColor; }
+		set
+		{
+			if( !Color32.Equals( value, backgroundColor ) )
+			{
+				backgroundColor = value;
 				Invalidate();
 			}
 		}
@@ -304,7 +323,7 @@ public class dfLabel : dfControl
 		get { return this.text; }
 		set
 		{
-			value = value.Replace( "\\t", "\t" );
+			value = value.Replace( "\\t", "\t" ).Replace( "\\n", "\n" );
 			if( !string.Equals( value, this.text ) )
 			{
 				this.text = this.getLocalizedValue( value );
@@ -647,7 +666,7 @@ public class dfLabel : dfControl
 		
 		base.Invalidate();
 
-		if( this.Font == null || !this.Font.IsValid || string.IsNullOrEmpty( this.Text ) )
+		if( this.Font == null || !this.Font.IsValid )
 			return;
 
 		// We want to calculate the dfLabel's size *before* rendering or 
@@ -657,6 +676,18 @@ public class dfLabel : dfControl
 
 		if( !autoSize && !autoHeight && !sizeIsUninitialized )
 			return;
+
+		if( string.IsNullOrEmpty( this.Text ) )
+		{
+
+			if( sizeIsUninitialized )
+				Size = new Vector2( 150, 24 );
+			if( this.AutoSize || this.AutoHeight )
+				Height = Mathf.CeilToInt( Font.LineHeight * TextScale );
+
+			return;
+
+		}
 
 		using( var textRenderer = obtainRenderer() )
 		{
@@ -681,51 +712,6 @@ public class dfLabel : dfControl
 
 	}
 
-	protected override void OnRebuildRenderData()
-	{
-
-		try
-		{
-
-			Profiler.BeginSample( "Render label" );
-
-			if( this.Font == null || !this.Font.IsValid )
-				return;
-
-			renderData.Material = Font.Material;
-
-			renderBackground();
-
-			if( string.IsNullOrEmpty( this.Text ) )
-				return;
-
-			var sizeIsUninitialized = ( size.sqrMagnitude <= float.Epsilon );
-
-			using( var textRenderer = obtainRenderer() )
-			{
-
-				textRenderer.Render( text, renderData );
-
-				if( AutoSize || sizeIsUninitialized )
-				{
-					Size = textRenderer.RenderedSize + new Vector2( padding.horizontal, padding.vertical );
-				}
-				else if( AutoHeight )
-				{
-					Size = new Vector2( size.x, textRenderer.RenderedSize.y + padding.vertical ).RoundToInt();
-				}
-
-			}
-
-		}
-		finally
-		{
-			this.isControlInvalidated = false;
-			Profiler.EndSample();
-		}
-
-	}
-
 	private dfFontRendererBase obtainRenderer()
 	{
 
@@ -734,7 +720,7 @@ public class dfLabel : dfControl
 		var clientSize = this.Size - new Vector2( padding.horizontal, padding.vertical );
 
 		var effectiveSize = ( this.autoSize || sizeIsUninitialized ) ? getAutoSizeDefault() : clientSize;
-		if( autoHeight ) effectiveSize = new Vector2( clientSize.x, 4096 );
+		if( autoHeight ) effectiveSize = new Vector2( clientSize.x, int.MaxValue );
 
 		var p2u = PixelsToUnits();
 		var origin = ( pivot.TransformToUpperLeft( Size ) + new Vector3( padding.left, -padding.top ) ) * p2u;
@@ -764,6 +750,13 @@ public class dfLabel : dfControl
 		textRenderer.Shadow = this.Shadow;
 		textRenderer.ShadowColor = this.ShadowColor;
 		textRenderer.ShadowOffset = this.ShadowOffset;
+
+		var dynamicFontRenderer = textRenderer as dfDynamicFont.DynamicFontRenderer;
+		if( dynamicFontRenderer != null )
+		{
+			dynamicFontRenderer.SpriteAtlas = this.Atlas;
+			dynamicFontRenderer.SpriteBuffer = renderData;
+		}
 
 		if( this.vertAlign != dfVerticalAlignment.Top )
 		{
@@ -799,8 +792,8 @@ public class dfLabel : dfControl
 	private Vector2 getAutoSizeDefault()
 	{
 
-		var maxWidth = this.maxSize.x > float.Epsilon ? this.maxSize.x : 4096;
-		var maxHeight = this.maxSize.y > float.Epsilon ? this.maxSize.y : 4096;
+		var maxWidth = this.maxSize.x > float.Epsilon ? this.maxSize.x : int.MaxValue;
+		var maxHeight = this.maxSize.y > float.Epsilon ? this.maxSize.y : int.MaxValue;
 
 		var maxSize = new Vector2( maxWidth, maxHeight );
 
@@ -845,7 +838,7 @@ public class dfLabel : dfControl
 			return;
 		}
 
-		var color = ApplyOpacity( UnityEngine.Color.white );
+		var color = ApplyOpacity( BackgroundColor );
 		var options = new dfSprite.RenderOptions()
 		{
 			atlas = atlas,
@@ -862,6 +855,108 @@ public class dfLabel : dfControl
 			dfSprite.renderSprite( renderData, options );
 		else
 			dfSlicedSprite.renderSprite( renderData, options );
+
+	}
+
+	#endregion
+
+	#region IDFMultiRender Members
+
+	private dfRenderData textRenderData = null;
+	private dfList<dfRenderData> buffers = dfList<dfRenderData>.Obtain();
+
+	public dfList<dfRenderData> RenderMultiple()
+	{
+
+		try
+		{
+
+			//@Profiler.BeginSample( "dfLabel.RenderMultiple()" );
+
+			if( Atlas == null || Font == null || !isVisible || !Font.IsValid )
+				return null;
+
+			// Initialize render buffers if needed
+			if( renderData == null )
+			{
+
+				renderData = dfRenderData.Obtain();
+				textRenderData = dfRenderData.Obtain();
+
+				isControlInvalidated = true;
+
+			}
+
+			// If control is not dirty, update the transforms on the 
+			// render buffers (in case control moved) and return 
+			// pre-rendered data
+			if( !isControlInvalidated )
+			{
+				for( int i = 0; i < buffers.Count; i++ )
+				{
+					buffers[ i ].Transform = transform.localToWorldMatrix;
+				}
+				return buffers;
+			}
+
+			#region Prepare render buffers
+
+			buffers.Clear();
+
+			renderData.Clear();
+			renderData.Material = Atlas.Material;
+			renderData.Transform = this.transform.localToWorldMatrix;
+			buffers.Add( renderData );
+
+			textRenderData.Clear();
+			textRenderData.Material = Atlas.Material;
+			textRenderData.Transform = this.transform.localToWorldMatrix;
+			buffers.Add( textRenderData );
+
+			#endregion
+
+			// Render the background sprite, if there is one
+			renderBackground();
+
+			if( string.IsNullOrEmpty( this.Text ) )
+			{
+				
+				if( this.AutoSize || this.AutoHeight )
+					Height = Mathf.CeilToInt( Font.LineHeight * TextScale );
+
+				return buffers;
+
+			}
+
+			var sizeIsUninitialized = ( size.sqrMagnitude <= float.Epsilon );
+
+			using( var textRenderer = obtainRenderer() )
+			{
+
+				textRenderer.Render( text, textRenderData );
+
+				if( AutoSize || sizeIsUninitialized )
+				{
+					Size = ( textRenderer.RenderedSize + new Vector2( padding.horizontal, padding.vertical ) ).CeilToInt();
+				}
+				else if( AutoHeight )
+				{
+					Size = new Vector2( size.x, textRenderer.RenderedSize.y + padding.vertical ).CeilToInt();
+				}
+
+			}
+
+			// Make sure that the collider size always matches the control
+			updateCollider();
+
+			return buffers;
+
+		}
+		finally
+		{
+			this.isControlInvalidated = false;
+			//@Profiler.EndSample();
+		}
 
 	}
 

@@ -18,10 +18,7 @@ public class TweenEventBindingInspector : Editor
 
 		var binder = target as dfTweenEventBinding;
 
-		EditorGUIUtility.LookLikeControls( 100f );
-		EditorGUI.indentLevel += 1;
-
-		GUILayout.Label( "Tween", "HeaderLabel" );
+		using( dfEditorUtil.BeginGroup( "Tween" ) )
 		{
 
 			if( binder.Tween == null )
@@ -41,7 +38,7 @@ public class TweenEventBindingInspector : Editor
 
 		}
 
-		GUILayout.Label( "Events", "HeaderLabel" );
+		using( dfEditorUtil.BeginGroup( "Events" ) )
 		{
 
 			if( binder.EventSource == null )

@@ -443,12 +443,11 @@ public class dfRichTextLabel : dfControl, IDFMultiRender
 
 		base.Update();
 
-		if( useScrollMomentum && !isMouseDown )
+		if( useScrollMomentum && !isMouseDown && scrollMomentum.magnitude > 0.1f )
 		{
 			ScrollPosition += scrollMomentum;
+			scrollMomentum *= ( 0.95f - Time.deltaTime );
 		}
-
-		scrollMomentum *= ( 0.95f - Time.deltaTime );
 
 	}
 
@@ -706,7 +705,7 @@ public class dfRichTextLabel : dfControl, IDFMultiRender
 
 		}
 
-		Profiler.BeginSample( "Render " + this.name );
+		//@Profiler.BeginSample( "Render " + this.name );
 		try
 		{
 
@@ -724,10 +723,10 @@ public class dfRichTextLabel : dfControl, IDFMultiRender
 			viewportBox.FitToContents();
 			updateScrollbars();
 
-			Profiler.BeginSample( "Gather markup render buffers" );
+			//@Profiler.BeginSample( "Gather markup render buffers" );
 			buffers.Clear();
 			gatherRenderBuffers( viewportBox, this.buffers );
-			Profiler.EndSample();
+			//@Profiler.EndSample();
 
 			return this.buffers;
 
@@ -735,7 +734,7 @@ public class dfRichTextLabel : dfControl, IDFMultiRender
 		finally
 		{
 			this.isControlInvalidated = false;
-			Profiler.EndSample();
+			//@Profiler.EndSample();
 		}
 
 	}
@@ -786,7 +785,8 @@ public class dfRichTextLabel : dfControl, IDFMultiRender
 			FontSize = scaledFontSize,
 			FontStyle = this.FontStyle,
 			LineHeight = scaledLineHeight,
-			Color = this.Color,
+			Color = ApplyOpacity( this.Color ),
+			Opacity = this.CalculateOpacity(),
 			Align = this.TextAlignment,
 			PreserveWhitespace = this.preserveWhitespace
 		};
@@ -796,7 +796,7 @@ public class dfRichTextLabel : dfControl, IDFMultiRender
 			Size = this.Size
 		};
 
-		Profiler.BeginSample( "Perform layout on markup" );
+		//@Profiler.BeginSample( "Perform layout on markup" );
 		for( int i = 0; i < elements.Count; i++ )
 		{
 			var child = elements[ i ];
@@ -805,7 +805,7 @@ public class dfRichTextLabel : dfControl, IDFMultiRender
 				child.PerformLayout( viewportBox, style );
 			}
 		}
-		Profiler.EndSample();
+		//@Profiler.EndSample();
 
 	}
 
@@ -934,7 +934,7 @@ public class dfRichTextLabel : dfControl, IDFMultiRender
 
 			var p2u = PixelsToUnits();
 			var scroll = -scrollPosition.Scale( 1, -1 ).RoundToInt();
-			var offset = (Vector3)( scroll + box.GetOffset().Scale( 1, -1 ) );
+			var offset = (Vector3)( scroll + box.GetOffset().Scale( 1, -1 ) ) + pivot.TransformToUpperLeft( Size );
 			
 			var vertices = buffer.Vertices;
 			var matrix = this.transform.localToWorldMatrix;
@@ -985,7 +985,7 @@ public class dfRichTextLabel : dfControl, IDFMultiRender
 	private void clipToViewport( dfRenderData renderData )
 	{
 
-		Profiler.BeginSample( "Clip markup box to viewport" );
+		//@Profiler.BeginSample( "Clip markup box to viewport" );
 
 		var planes = this.GetClippingPlanes();
 		var material = renderData.Material;
@@ -999,7 +999,7 @@ public class dfRichTextLabel : dfControl, IDFMultiRender
 		renderData.Material = material;
 		renderData.Transform = matrix;
 
-		Profiler.EndSample();
+		//@Profiler.EndSample();
 
 	}
 

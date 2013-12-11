@@ -6,6 +6,7 @@ using System.Linq;
 using System.Collections;
 using System.Collections.Generic;
 
+[AddComponentMenu( "Daikon Forge/Examples/Game Menu/Gravatar" )]
 [Serializable]
 public class Gravatar : MonoBehaviour
 {

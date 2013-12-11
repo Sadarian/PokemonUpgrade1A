@@ -94,9 +94,22 @@ public class dfSprite : dfControl
 			value = getLocalizedValue( value );
 			if( value != spriteName )
 			{
+
 				spriteName = value;
+
+				if( !Application.isPlaying )
+				{
+					var spriteInfo = SpriteInfo;
+					if( size == Vector2.zero && spriteInfo != null )
+					{
+						size = spriteInfo.sizeInPixels;
+						updateCollider();
+					}
+				}
+
 				Invalidate();
 				OnSpriteNameChanged( value );
+
 			}
 		}
 	}
@@ -116,12 +129,6 @@ public class dfSprite : dfControl
 				return null;
 					
 			result = Atlas[ spriteName ];
-
-			if( size == Vector2.zero && result != null )
-			{
-				size = result.sizeInPixels;
-				updateCollider();
-			}
 
 			return result;
 

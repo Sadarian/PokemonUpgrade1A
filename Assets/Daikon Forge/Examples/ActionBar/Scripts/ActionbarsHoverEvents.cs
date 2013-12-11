@@ -4,11 +4,15 @@ using System.Linq;
 using System.Collections;
 using System.Collections.Generic;
 
+[AddComponentMenu( "Daikon Forge/Examples/Actionbar/Hover Events" )]
 public class ActionbarsHoverEvents : MonoBehaviour 
 {
 
 	private dfControl actionBar;
+
+	private dfControl lastTarget;
 	private dfControl target;
+
 	private bool isTooltipVisible = false;
 
 	public void Start()
@@ -27,6 +31,10 @@ public class ActionbarsHoverEvents : MonoBehaviour
 		{
 
 			target = mouseEvent.Source;
+			if( target == lastTarget )
+				return;
+
+			lastTarget = target;
 
 			isTooltipVisible = true;
 
@@ -41,6 +49,20 @@ public class ActionbarsHoverEvents : MonoBehaviour
 			ActionbarsTooltip.Show( spell );
 
 		}
+		else
+		{
+			lastTarget = null;
+		}
+
+	}
+
+	public void OnMouseDown()
+	{
+	
+		isTooltipVisible = false;
+
+		ActionbarsTooltip.Hide();
+		target = null;
 
 	}
 

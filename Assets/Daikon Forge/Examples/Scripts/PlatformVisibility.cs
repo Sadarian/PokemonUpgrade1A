@@ -1,6 +1,7 @@
 using UnityEngine;
 using System.Collections;
 
+[AddComponentMenu( "Daikon Forge/Examples/General/Platform-based Visibility" )]
 public class PlatformVisibility : MonoBehaviour
 {
 

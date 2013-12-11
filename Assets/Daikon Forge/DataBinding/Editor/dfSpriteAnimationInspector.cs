@@ -22,12 +22,9 @@ public class dfSpriteAnimationInspector : Editor
 
 		var animation = target as dfSpriteAnimation;
 
-		dfEditorUtil.ComponentCopyButton( target );
+		dfEditorUtil.LabelWidth = 100f;
 
-		EditorGUIUtility.LookLikeControls( 100f );
-		EditorGUI.indentLevel += 1;
-
-		GUILayout.Label( "General", "HeaderLabel" );
+		using( dfEditorUtil.BeginGroup( "General" ) )
 		{
 
 			var name = EditorGUILayout.TextField( "Name", animation.TweenName );
@@ -41,7 +38,7 @@ public class dfSpriteAnimationInspector : Editor
 
 		}
 
-		GUILayout.Label( "Target", "HeaderLabel" );
+		using( dfEditorUtil.BeginGroup( "Target" ) )
 		{
 
 			if( animation.Target == null )
@@ -89,7 +86,7 @@ public class dfSpriteAnimationInspector : Editor
 			return;
 		}
 
-		GUILayout.Label( "Animation", "HeaderLabel" );
+		using( dfEditorUtil.BeginGroup( "Animation" ) )
 		{
 
 			EditorGUI.BeginChangeCheck();
@@ -136,7 +133,7 @@ public class dfSpriteAnimationInspector : Editor
 		if( !Application.isPlaying )
 			return;
 
-		GUILayout.Label( "Debug", "HeaderLabel" );
+		using( dfEditorUtil.BeginGroup( "Debug" ) )
 		EditorGUILayout.BeginHorizontal();
 		{
 			GUILayout.Space( dfEditorUtil.LabelWidth + 5 );

@@ -27,17 +27,16 @@ public class dfListboxInspector : dfControlInspector
 		if( !isFoldoutExpanded( foldouts, "Listbox Properties", true ) )
 			return false;
 
-		EditorGUIUtility.LookLikeControls( 105f );
-		EditorGUI.indentLevel += 1;
+		dfEditorUtil.LabelWidth = 105f;
 
 		SelectTextureAtlas( "Atlas", control, "Atlas", false, true );
 
-		GUILayout.Label( "Listbox", "HeaderLabel" );
+		using( dfEditorUtil.BeginGroup( "Listbox" ) )
 		{
 
 			SelectSprite( "Background", control.Atlas, control, "BackgroundSprite", false );
 
-			var listPadding = EditPadding( "Padding", control.ListPadding );
+			var listPadding = dfEditorUtil.EditPadding( "Padding", control.ListPadding );
 			if( !listPadding.Equals( control.ListPadding ) )
 			{
 				dfEditorUtil.MarkUndo( control, "Modify padding" );
@@ -60,10 +59,10 @@ public class dfListboxInspector : dfControlInspector
 
 		}
 
-		GUILayout.Label( "List Item Appearance", "HeaderLabel" );
+		using( dfEditorUtil.BeginGroup( "List Item Appearance" ) )
 		{
 
-			SelectFontDefinition( "Font", control.Atlas, control, "Font", true );
+			SelectFontDefinition( "Font", control.Atlas, control, "Font", true, true );
 
 			var textColor = EditorGUILayout.ColorField( "Text Color", control.ItemTextColor );
 			if( textColor != control.ItemTextColor )
@@ -78,6 +77,13 @@ public class dfListboxInspector : dfControlInspector
 				dfEditorUtil.MarkUndo( control, "Change Text Scale" );
 				control.ItemTextScale = textScale;
 			}
+
+			//var scaleMode = (dfTextScaleMode)EditorGUILayout.EnumPopup( "Auto Scale", control.TextScaleMode );
+			//if( scaleMode != control.TextScaleMode )
+			//{
+			//    dfEditorUtil.MarkUndo( control, "Change Text Scale Mode" );
+			//    control.TextScaleMode = scaleMode;
+			//}
 
 			var alignment = (TextAlignment)EditorGUILayout.EnumPopup( "Alignment", control.ItemAlignment );
 			if( alignment != control.ItemAlignment )
@@ -96,7 +102,7 @@ public class dfListboxInspector : dfControlInspector
 			SelectSprite( "Highlight", control.Atlas, control, "ItemHighlight", false );
 			SelectSprite( "Hover", control.Atlas, control, "ItemHover", false );
 
-			var padding = EditPadding( "Text Padding", control.ItemPadding );
+			var padding = dfEditorUtil.EditPadding( "Text Padding", control.ItemPadding );
 			if( padding != control.ItemPadding )
 			{
 				dfEditorUtil.MarkUndo( control, "Change control Padding" );
@@ -120,22 +126,22 @@ public class dfListboxInspector : dfControlInspector
 					control.ShadowColor = shadowColor;
 				}
 
-				var shadowOffset = EditInt2( "Shadow Offset", "X", "Y", control.ShadowOffset );
+				var shadowOffset = dfEditorUtil.EditInt2( "Shadow Offset", "X", "Y", control.ShadowOffset );
 				if( shadowOffset != control.ShadowOffset )
 				{
 					dfEditorUtil.MarkUndo( control, "Change Shadow Color" );
 					control.ShadowOffset = shadowOffset;
 				}
 
-				EditorGUIUtility.LookLikeControls( 120f );
+				dfEditorUtil.LabelWidth = 120f;
 
 			}
 
-			EditorGUIUtility.LookLikeControls( 110f );
+			dfEditorUtil.LabelWidth = 110f;
 
 		}
 
-		GUILayout.Label( "List Data", "HeaderLabel" );
+		using( dfEditorUtil.BeginGroup( "List Data" ) )
 		{
 
 			var totalItemHeight = control.Items.Length * control.ItemHeight;
@@ -184,7 +190,7 @@ public class dfListboxInspector : dfControlInspector
 		}
 		GUILayout.EndHorizontal();
 
-		EditorGUIUtility.LookLikeControls( 100f );
+		dfEditorUtil.LabelWidth = 100f;
 
 	}
 

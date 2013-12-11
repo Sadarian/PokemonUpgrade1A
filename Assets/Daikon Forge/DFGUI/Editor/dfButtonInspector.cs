@@ -27,10 +27,9 @@ public class dfButtonInspector : dfControlInspector
 		if( !isFoldoutExpanded( foldouts, "Button Properties", true ) )
 			return false;
 
-		EditorGUIUtility.LookLikeControls( 100f );
-		EditorGUI.indentLevel += 1;
+		dfEditorUtil.LabelWidth = 100f;
 
-		GUILayout.Label( "Data", "HeaderLabel" );
+		using( dfEditorUtil.BeginGroup( "Data" ) )
 		{
 
 			var text = EditorGUILayout.TextField( "Text", control.Text );
@@ -42,7 +41,7 @@ public class dfButtonInspector : dfControlInspector
 
 		}
 
-		GUILayout.Label( "Behavior", "HeaderLabel" );
+		using( dfEditorUtil.BeginGroup( "Behavior" ) )
 		{
 
 			var autoSize = EditorGUILayout.Toggle( "Auto size", control.AutoSize );
@@ -82,74 +81,10 @@ public class dfButtonInspector : dfControlInspector
 
 		}
 
-		GUILayout.Label( "Images", "HeaderLabel" );
+		using( dfEditorUtil.BeginGroup( "Text Appearance" ) )
 		{
 
-			SelectTextureAtlas( "Atlas", control, "Atlas", false, true );
-			if( control.GUIManager != null && !dfAtlas.Equals( control.Atlas, control.GUIManager.DefaultAtlas ) )
-			{
-				EditorGUILayout.HelpBox( "This control does not use the same Texture Atlas as the View, which will result in an additional draw call.", MessageType.Info );
-			}
-
-			var buttonState = (dfButton.ButtonState)EditorGUILayout.EnumPopup( "Button State", control.State );
-			if( buttonState != control.State )
-			{
-				dfEditorUtil.MarkUndo( control, "Change Button State" );
-				control.State = buttonState;
-			}
-
-			SelectSprite( "Normal", control.Atlas, control, "BackgroundSprite" );
-			SelectSprite( "Focus", control.Atlas, control, "FocusSprite", false );
-			SelectSprite( "Hover", control.Atlas, control, "HoverSprite", false );
-			SelectSprite( "Pressed", control.Atlas, control, "PressedSprite", false );
-			SelectSprite( "Disabled", control.Atlas, control, "DisabledSprite", false );
-
-		}
-
-		GUILayout.Label( "Text Colors", "HeaderLabel" );
-		{
-
-			var textColor = EditorGUILayout.ColorField( "Normal", control.TextColor );
-			if( textColor != control.TextColor )
-			{
-				dfEditorUtil.MarkUndo( control, "Change Text Color" );
-				control.TextColor = textColor;
-			}
-
-			textColor = EditorGUILayout.ColorField( "Hover", control.HoverTextColor );
-			if( textColor != control.HoverTextColor )
-			{
-				dfEditorUtil.MarkUndo( control, "Change Text Color" );
-				control.HoverTextColor = textColor;
-			}
-
-			textColor = EditorGUILayout.ColorField( "Pressed", control.PressedTextColor );
-			if( textColor != control.PressedTextColor )
-			{
-				dfEditorUtil.MarkUndo( control, "Change Text Color" );
-				control.PressedTextColor = textColor;
-			}
-
-			textColor = EditorGUILayout.ColorField( "Focused", control.FocusTextColor );
-			if( textColor != control.FocusTextColor )
-			{
-				dfEditorUtil.MarkUndo( control, "Change Text Color" );
-				control.FocusTextColor = textColor;
-			}
-
-			textColor = EditorGUILayout.ColorField( "Disabled", control.DisabledTextColor );
-			if( textColor != control.DisabledTextColor )
-			{
-				dfEditorUtil.MarkUndo( control, "Change Text Color" );
-				control.DisabledTextColor = textColor;
-			}
-
-		}
-
-		GUILayout.Label( "Text Appearance", "HeaderLabel" );
-		{
-
-			SelectFontDefinition( "Font", control.Atlas, control, "Font", true );
+			SelectFontDefinition( "Font", control.Atlas, control, "Font", true, true );
 
 			if( control.Font == null )
 				return false;
@@ -189,7 +124,7 @@ public class dfButtonInspector : dfControlInspector
 				control.WordWrap = wordwrap;
 			}
 
-			var padding = EditPadding( "Padding", control.Padding );
+			var padding = dfEditorUtil.EditPadding( "Padding", control.Padding );
 			if( padding != control.Padding )
 			{
 				dfEditorUtil.MarkUndo( control, "Change Textbox Padding" );
@@ -213,15 +148,119 @@ public class dfButtonInspector : dfControlInspector
 					control.ShadowColor = shadowColor;
 				}
 
-				var shadowOffset = EditInt2( "Shadow Offset", "X", "Y", control.ShadowOffset );
+				var shadowOffset = dfEditorUtil.EditInt2( "Shadow Offset", "X", "Y", control.ShadowOffset );
 				if( shadowOffset != control.ShadowOffset )
 				{
 					dfEditorUtil.MarkUndo( control, "Change Shadow Color" );
 					control.ShadowOffset = shadowOffset;
 				}
 
-				EditorGUIUtility.LookLikeControls( 120f );
+				dfEditorUtil.LabelWidth = 120f;
 
+			}
+
+		}
+
+		using( dfEditorUtil.BeginGroup( "Images" ) )
+		{
+
+			SelectTextureAtlas( "Atlas", control, "Atlas", false, true );
+			if( control.GUIManager != null && !dfAtlas.Equals( control.Atlas, control.GUIManager.DefaultAtlas ) )
+			{
+				EditorGUILayout.HelpBox( "This control does not use the same Texture Atlas as the View, which will result in an additional draw call.", MessageType.Info );
+			}
+
+			var buttonState = (dfButton.ButtonState)EditorGUILayout.EnumPopup( "Button State", control.State );
+			if( buttonState != control.State )
+			{
+				dfEditorUtil.MarkUndo( control, "Change Button State" );
+				control.State = buttonState;
+			}
+
+			SelectSprite( "Normal", control.Atlas, control, "BackgroundSprite" );
+			SelectSprite( "Focus", control.Atlas, control, "FocusSprite", false );
+			SelectSprite( "Hover", control.Atlas, control, "HoverSprite", false );
+			SelectSprite( "Pressed", control.Atlas, control, "PressedSprite", false );
+			SelectSprite( "Disabled", control.Atlas, control, "DisabledSprite", false );
+
+		}
+
+		using( dfEditorUtil.BeginGroup( "Image Colors" ) )
+		{
+
+			var backColor = EditorGUILayout.ColorField( "Normal", control.Color );
+			if( backColor != control.Color )
+			{
+				dfEditorUtil.MarkUndo( control, "Change Background Color" );
+				control.Color = backColor;
+			}
+
+			backColor = EditorGUILayout.ColorField( "Hover", control.HoverBackgroundColor );
+			if( backColor != control.HoverBackgroundColor )
+			{
+				dfEditorUtil.MarkUndo( control, "Change Background Color" );
+				control.HoverBackgroundColor = backColor;
+			}
+
+			backColor = EditorGUILayout.ColorField( "Pressed", control.PressedBackgroundColor );
+			if( backColor != control.PressedBackgroundColor )
+			{
+				dfEditorUtil.MarkUndo( control, "Change Background Color" );
+				control.PressedBackgroundColor = backColor;
+			}
+
+			backColor = EditorGUILayout.ColorField( "Focused", control.FocusBackgroundColor );
+			if( backColor != control.FocusBackgroundColor )
+			{
+				dfEditorUtil.MarkUndo( control, "Change Background Color" );
+				control.FocusBackgroundColor = backColor;
+			}
+
+			backColor = EditorGUILayout.ColorField( "Disabled", control.DisabledColor );
+			if( backColor != control.DisabledColor )
+			{
+				dfEditorUtil.MarkUndo( control, "Change Background Color" );
+				control.DisabledColor = backColor;
+			}
+
+		}
+
+		using( dfEditorUtil.BeginGroup( "Text Colors" ) )
+		{
+
+			var textColor = EditorGUILayout.ColorField( "Normal", control.TextColor );
+			if( textColor != control.TextColor )
+			{
+				dfEditorUtil.MarkUndo( control, "Change Text Color" );
+				control.TextColor = textColor;
+			}
+
+			textColor = EditorGUILayout.ColorField( "Hover", control.HoverTextColor );
+			if( textColor != control.HoverTextColor )
+			{
+				dfEditorUtil.MarkUndo( control, "Change Text Color" );
+				control.HoverTextColor = textColor;
+			}
+
+			textColor = EditorGUILayout.ColorField( "Pressed", control.PressedTextColor );
+			if( textColor != control.PressedTextColor )
+			{
+				dfEditorUtil.MarkUndo( control, "Change Text Color" );
+				control.PressedTextColor = textColor;
+			}
+
+			textColor = EditorGUILayout.ColorField( "Focused", control.FocusTextColor );
+			if( textColor != control.FocusTextColor )
+			{
+				dfEditorUtil.MarkUndo( control, "Change Text Color" );
+				control.FocusTextColor = textColor;
+			}
+
+			textColor = EditorGUILayout.ColorField( "Disabled", control.DisabledTextColor );
+			if( textColor != control.DisabledTextColor )
+			{
+				dfEditorUtil.MarkUndo( control, "Change Text Color" );
+				control.DisabledTextColor = textColor;
 			}
 
 		}

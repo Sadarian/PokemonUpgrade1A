@@ -3,6 +3,7 @@ using System.Collections;
 
 using UnityEngine;
 
+[AddComponentMenu( "Daikon Forge/Examples/Game Menu/Achievement List Item" )]
 public class DemoAchievementListItem : MonoBehaviour
 {
 

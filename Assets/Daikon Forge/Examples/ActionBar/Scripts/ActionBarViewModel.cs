@@ -5,6 +5,7 @@ using System.Collections.Generic;
 
 using UnityEngine;
 
+[AddComponentMenu( "Daikon Forge/Examples/Actionbar/View Model" )]
 public class ActionBarViewModel : MonoBehaviour
 {
 

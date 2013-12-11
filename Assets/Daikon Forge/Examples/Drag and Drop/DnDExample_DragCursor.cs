@@ -2,6 +2,7 @@ using UnityEngine;
 using System.Collections;
 using System.Collections.Generic;
 
+[AddComponentMenu( "Daikon Forge/Examples/Drag and Drop/Drag Cursor" )]
 public class DnDExample_DragCursor : MonoBehaviour 
 {
 

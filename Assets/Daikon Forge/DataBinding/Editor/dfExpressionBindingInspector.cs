@@ -24,10 +24,7 @@ public class dfExpressionBindingInspector : Editor
 
 		var showDialog = false;
 
-		EditorGUIUtility.LookLikeControls( 100f );
-		EditorGUI.indentLevel += 1;
-
-		GUILayout.Label( "Data Source", "HeaderLabel" );
+		using( dfEditorUtil.BeginGroup( "Data Source" ) )
 		{
 
 			var sourceComponent = dfEditorUtil.ComponentField( "Component", binder.DataSource );
@@ -48,7 +45,7 @@ public class dfExpressionBindingInspector : Editor
 
 		}
 
-		GUILayout.Label( "Expression", "HeaderLabel" );
+		using( dfEditorUtil.BeginGroup( "Expression" ) )
 		{
 
 			EditorGUILayout.BeginHorizontal();
@@ -71,7 +68,7 @@ public class dfExpressionBindingInspector : Editor
 
 		}
 
-		GUILayout.Label( "Data Target", "HeaderLabel" );
+		using( dfEditorUtil.BeginGroup( "Data Target" ) )
 		{
 
 			var dataTarget = binder.DataTarget;

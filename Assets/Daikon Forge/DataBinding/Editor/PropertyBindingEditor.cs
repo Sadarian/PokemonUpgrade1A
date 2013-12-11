@@ -17,10 +17,9 @@ public class PropertyBindingEditor : Editor
 
 		var binder = target as dfPropertyBinding;
 
-		EditorGUIUtility.LookLikeControls( 100f );
-		EditorGUI.indentLevel += 1;
+		dfEditorUtil.LabelWidth = 100f;
 
-		GUILayout.Label( "Data Source", "HeaderLabel" );
+		using( dfEditorUtil.BeginGroup( "Data Source" ) )
 		{
 
 			if( binder.DataSource == null )
@@ -81,7 +80,7 @@ public class PropertyBindingEditor : Editor
 		if( sourcePropertyType == null )
 			return;
 
-		GUILayout.Label( "Data Target", "HeaderLabel" );
+		using( dfEditorUtil.BeginGroup( "Data Target" ) )
 		{
 
 			if( binder.DataSource == null )
@@ -136,7 +135,7 @@ public class PropertyBindingEditor : Editor
 
 		}
 
-		GUILayout.Label( "Synchronization", "HeaderLabel" );
+		using( dfEditorUtil.BeginGroup( "Synchronization" ) )
 		{
 
 			var twoWay = EditorGUILayout.Toggle( "Two way", binder.TwoWay );

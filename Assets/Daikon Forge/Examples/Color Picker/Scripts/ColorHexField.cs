@@ -5,6 +5,7 @@ using System.Collections.Generic;
 
 using UnityEngine;
 
+[AddComponentMenu( "Daikon Forge/Examples/Color Picker/Color Hex Field" )]
 public class ColorHexField : MonoBehaviour 
 {
 

@@ -1,6 +1,7 @@
 using UnityEngine;
 using System.Collections;
 
+[AddComponentMenu( "Daikon Forge/Examples/Containers/Auto-Arrange Item" )]
 public class AutoArrangeDemoItem : MonoBehaviour
 {
 

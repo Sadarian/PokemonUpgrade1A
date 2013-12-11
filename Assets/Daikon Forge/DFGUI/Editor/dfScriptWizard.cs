@@ -107,7 +107,7 @@ public class dfScriptWizard : EditorWindow
 	public void OnGUI()
 	{
 
-		EditorGUIUtility.LookLikeControls( LABEL_WIDTH );
+		dfEditorUtil.LabelWidth = LABEL_WIDTH;
 
 		EditorGUILayout.BeginHorizontal();
 		{
@@ -228,135 +228,141 @@ public class dfScriptWizard : EditorWindow
 
 		//EditComponentReferences();
 
-		GUILayout.Label( "Events", "HeaderLabel" );
-
-		var categories = events.Select( x => x.Category ).Distinct().ToList();
-
-		EditorGUILayout.BeginVertical( "TextField", GUILayout.ExpandWidth( true ) );
+		using( dfEditorUtil.BeginGroup( "Events" ) )
 		{
 
-			eventsScrollPos = EditorGUILayout.BeginScrollView( eventsScrollPos );
+			var categories = events.Select( x => x.Category ).Distinct().ToList();
+
+			EditorGUILayout.BeginVertical( "TextField", GUILayout.ExpandWidth( true ) );
 			{
 
-				for( int i = 0; i < categories.Count; i++ )
+				eventsScrollPos = EditorGUILayout.BeginScrollView( eventsScrollPos );
 				{
 
-					var category = categories[ i ];
-					if( categoryHeader( category ) )
+					for( int i = 0; i < categories.Count; i++ )
 					{
 
-						var categoryEvents = events.Where( x => x.Category == category ).ToList();
-						for( int x = 0; x < categoryEvents.Count; x++ )
+						var category = categories[ i ];
+						if( categoryHeader( category ) )
 						{
 
-							var evt = categoryEvents[ x ];
+							var categoryEvents = events.Where( x => x.Category == category ).ToList();
+							for( int x = 0; x < categoryEvents.Count; x++ )
+							{
 
-							Rect toggleRect = GUILayoutUtility.GetRect( GUIContent.none, EditorStyles.toggle );
-							toggleRect.x += 15;
-							toggleRect.width -= 15;
+								var evt = categoryEvents[ x ];
 
-							evt.IsSelected = GUI.Toggle( toggleRect, evt.IsSelected, evt.Field.Name );
+								Rect toggleRect = GUILayoutUtility.GetRect( GUIContent.none, EditorStyles.toggle );
+								toggleRect.x += 15;
+								toggleRect.width -= 15;
+
+								evt.IsSelected = GUI.Toggle( toggleRect, evt.IsSelected, evt.Field.Name );
+
+							}
 
 						}
 
 					}
 
 				}
+				EditorGUILayout.EndScrollView();
 
 			}
-			EditorGUILayout.EndScrollView();
+			EditorGUILayout.EndVertical();
 
 		}
-		EditorGUILayout.EndVertical();
 
 	}
 
 	private void EditComponentReferences()
 	{
 
-		GUILayout.Label( "References", "HeaderLabel" );
-
-		if( referencedComponents.Count > 0 )
+		using( dfEditorUtil.BeginGroup( "References" ) )
 		{
 
-			var collectionChanged = false;
-			for( int i = 0; i < referencedComponents.Count && !collectionChanged; i++ )
+			if( referencedComponents.Count > 0 )
 			{
 
-				var component = referencedComponents[ i ];
-
-				var header = !string.IsNullOrEmpty( component.Name ) ? component.Name : "Item " + ( i + 1 );
-				GUILayout.Label( header );
-				EditorGUI.indentLevel += 1;
-
-				var savedColor = GUI.color;
-				if( referencedComponents.Count( x => x.Name == component.Name ) > 1 )
-					GUI.color = Color.red;
-
-				component.Name = EditorGUILayout.TextField( "Name", component.Name );
-
-				GUI.color = savedColor;
-
-				EditorGUILayout.BeginHorizontal();
+				var collectionChanged = false;
+				for( int i = 0; i < referencedComponents.Count && !collectionChanged; i++ )
 				{
 
-					EditorGUILayout.LabelField( "Component", "", GUILayout.Width( LABEL_WIDTH - 14 ) );
-					GUILayout.Space( 2 );
+					var component = referencedComponents[ i ];
 
-					component.Component = (Component)EditorGUILayout.ObjectField( component.Component, typeof( Component ), true );
+					var header = !string.IsNullOrEmpty( component.Name ) ? component.Name : "Item " + ( i + 1 );
+					GUILayout.Label( header );
+					EditorGUI.indentLevel += 1;
 
-					if( GUILayout.Button( "X", GUILayout.Width( 22 ) ) )
+					var savedColor = GUI.color;
+					if( referencedComponents.Count( x => x.Name == component.Name ) > 1 )
+						GUI.color = Color.red;
+
+					component.Name = EditorGUILayout.TextField( "Name", component.Name );
+
+					GUI.color = savedColor;
+
+					EditorGUILayout.BeginHorizontal();
 					{
-						referencedComponents.RemoveAt( i );
-						collectionChanged = true;
+
+						EditorGUILayout.LabelField( "Component", "", GUILayout.Width( LABEL_WIDTH - 14 ) );
+						GUILayout.Space( 2 );
+
+						component.Component = (Component)EditorGUILayout.ObjectField( component.Component, typeof( Component ), true );
+
+						if( GUILayout.Button( "X", GUILayout.Width( 22 ) ) )
+						{
+							referencedComponents.RemoveAt( i );
+							collectionChanged = true;
+						}
+
 					}
+					EditorGUILayout.EndHorizontal();
+
+					EditorGUI.indentLevel -= 1;
 
 				}
-				EditorGUILayout.EndHorizontal();
-
-				EditorGUI.indentLevel -= 1;
 
 			}
-				
-		}
 
-		EditorGUILayout.HelpBox( "Drop a component here to add a component referece", MessageType.Info );
-		var evt = Event.current;
-		if( evt != null )
-		{
-			Rect textRect = GUILayoutUtility.GetLastRect();
-			if( evt.type == EventType.DragUpdated || evt.type == EventType.DragPerform )
+			EditorGUILayout.HelpBox( "Drop a component here to add a component referece", MessageType.Info );
+			var evt = Event.current;
+			if( evt != null )
 			{
-				if( textRect.Contains( evt.mousePosition ) )
+				Rect textRect = GUILayoutUtility.GetLastRect();
+				if( evt.type == EventType.DragUpdated || evt.type == EventType.DragPerform )
 				{
-					var dragged = DragAndDrop.objectReferences;
-					DragAndDrop.visualMode = ( dragged.Length > 0 ) ? DragAndDropVisualMode.Copy : DragAndDropVisualMode.None;
-					if( evt.type == EventType.DragPerform )
+					if( textRect.Contains( evt.mousePosition ) )
 					{
-						for( int i = 0; i < dragged.Length; i++ )
+						var dragged = DragAndDrop.objectReferences;
+						DragAndDrop.visualMode = ( dragged.Length > 0 ) ? DragAndDropVisualMode.Copy : DragAndDropVisualMode.None;
+						if( evt.type == EventType.DragPerform )
 						{
-							Component component = null;
-							if( dragged[ i ] is Component )
+							for( int i = 0; i < dragged.Length; i++ )
 							{
-								component = dragged[ i ] as Component;
-							}
-							else
-							{
-								var go = dragged[ i ] as GameObject;
-								if( go != null )
+								Component component = null;
+								if( dragged[ i ] is Component )
 								{
-									component = go.GetComponents( typeof( Component ) ).FirstOrDefault();
+									component = dragged[ i ] as Component;
+								}
+								else
+								{
+									var go = dragged[ i ] as GameObject;
+									if( go != null )
+									{
+										component = go.GetComponents( typeof( Component ) ).FirstOrDefault();
+									}
+								}
+								if( component != null )
+								{
+									referencedComponents.Add( new ComponentReference( component ) );
 								}
 							}
-							if( component != null )
-							{
-								referencedComponents.Add( new ComponentReference( component ) );
-							}
 						}
+						evt.Use();
 					}
-					evt.Use();
 				}
 			}
+
 		}
 
 	}

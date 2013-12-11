@@ -539,6 +539,7 @@ public class dfTabstrip : dfControl
 		control.IsVisibleChanged += control_IsVisibleChanged;
 		control.PositionChanged += childControlInvalidated;
 		control.SizeChanged += childControlInvalidated;
+		control.ZOrderChanged += childControlZOrderChanged;
 	}
 
 	private void detachEvents( dfControl control )
@@ -546,6 +547,11 @@ public class dfTabstrip : dfControl
 		control.IsVisibleChanged -= control_IsVisibleChanged;
 		control.PositionChanged -= childControlInvalidated;
 		control.SizeChanged -= childControlInvalidated;
+	}
+
+	void childControlZOrderChanged( dfControl control, int value )
+	{
+		onChildControlInvalidatedLayout();
 	}
 
 	void control_IsVisibleChanged( dfControl control, bool value )

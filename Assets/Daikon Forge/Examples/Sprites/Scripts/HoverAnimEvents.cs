@@ -2,6 +2,7 @@ using UnityEngine;
 using System.Collections;
 using System.Collections.Generic;
 
+[AddComponentMenu( "Daikon Forge/Examples/Sprites/Hover Animation Events" )]
 public class HoverAnimEvents : MonoBehaviour 
 {
 

@@ -27,10 +27,9 @@ public class dfTextureSpriteInspector : dfControlInspector
 		if( !isFoldoutExpanded( foldouts, "Texture Properties", true ) )
 			return false;
 
-		EditorGUIUtility.LookLikeControls( 100f );
-		EditorGUI.indentLevel += 1;
+		dfEditorUtil.LabelWidth = 100f;
 
-		GUILayout.Label( "Appearance", "HeaderLabel" );
+		using( dfEditorUtil.BeginGroup( "Appearance" ) )
 		{
 
 			var texture = EditorGUILayout.ObjectField( "Texture", control.Texture, typeof( Texture2D ), false ) as Texture2D;
@@ -49,7 +48,7 @@ public class dfTextureSpriteInspector : dfControlInspector
 
 		}
 
-		GUILayout.Label( "Flip", "HeaderLabel" );
+		using( dfEditorUtil.BeginGroup( "Flip" ) )
 		{
 
 			var flipHorz = EditorGUILayout.Toggle( "Flip Horz", ( control.Flip & dfSpriteFlip.FlipHorizontal ) == dfSpriteFlip.FlipHorizontal );
@@ -65,7 +64,7 @@ public class dfTextureSpriteInspector : dfControlInspector
 
 		}
 
-		GUILayout.Label( "Fill", "HeaderLabel" );
+		using( dfEditorUtil.BeginGroup( "Fill" ) )
 		{
 
 			var fillType = (dfFillDirection)EditorGUILayout.EnumPopup( "Fill Direction", control.FillDirection );

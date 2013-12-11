@@ -15,7 +15,7 @@ using UnityEngine;
 public class dfSpriteAnimation : dfTweenPlayableBase
 {
 
-	#region Public enumerations 
+	#region Public enumerations
 
 	/// <summary>
 	/// Indicates the direction that the animation should play in 
@@ -66,7 +66,7 @@ public class dfSpriteAnimation : dfTweenPlayableBase
 
 	#endregion
 
-	#region Private serialized fields 
+	#region Private serialized fields
 
 	[SerializeField]
 	private string animationName = "ANIMATION";
@@ -75,7 +75,7 @@ public class dfSpriteAnimation : dfTweenPlayableBase
 	private dfAnimationClip clip;
 
 	[SerializeField]
-	private dfComponentMemberInfo memberInfo = new dfComponentMemberInfo(); 
+	private dfComponentMemberInfo memberInfo = new dfComponentMemberInfo();
 
 	[SerializeField]
 	private dfTweenLoopType loopType = dfTweenLoopType.Loop;
@@ -94,10 +94,11 @@ public class dfSpriteAnimation : dfTweenPlayableBase
 
 	#endregion
 
-	#region Private runtime variables 
+	#region Private runtime variables
 
 	private bool autoRunStarted = false;
 	private bool isRunning = false;
+	private bool isPaused = false;
 	private dfObservableProperty target = null;
 
 	#endregion
@@ -146,10 +147,25 @@ public class dfSpriteAnimation : dfTweenPlayableBase
 		set { this.playDirection = value; if( this.IsPlaying ) this.Play(); }
 	}
 
+	public bool IsPaused
+	{
+		get { return this.isRunning && this.isPaused; }
+		set
+		{
+			if( value != this.IsPaused )
+			{
+				if( value )
+					Pause();
+				else
+					Resume();
+			}
+		}
+	}
+
 	#endregion
 
-	#region Unity events 
- 
+	#region Unity events
+
 	public void Awake() { }
 	public void Start() { }
 
@@ -166,7 +182,7 @@ public class dfSpriteAnimation : dfTweenPlayableBase
 
 	#endregion
 
-	#region Public methods 
+	#region Public methods
 
 	/// <summary>
 	/// Event-bindable wrapper around Direction and Play members to 
@@ -186,6 +202,30 @@ public class dfSpriteAnimation : dfTweenPlayableBase
 	{
 		this.playDirection = PlayDirection.Reverse;
 		this.Play();
+	}
+
+	/// <summary>
+	/// Pauses the running animation
+	/// </summary>
+	public void Pause()
+	{
+		if( this.isRunning )
+		{
+			this.isPaused = true;
+			onPaused();
+		}
+	}
+
+	/// <summary>
+	/// Resumes a paused animation
+	/// </summary>
+	public void Resume()
+	{
+		if( this.isRunning && this.isPaused )
+		{
+			this.isPaused = false;
+			onResumed();
+		}
 	}
 
 	#endregion
@@ -233,6 +273,7 @@ public class dfSpriteAnimation : dfTweenPlayableBase
 
 		StopAllCoroutines();
 		isRunning = false;
+		isPaused = false;
 
 		onReset();
 
@@ -254,6 +295,7 @@ public class dfSpriteAnimation : dfTweenPlayableBase
 
 		StopAllCoroutines();
 		isRunning = false;
+		isPaused = false;
 
 		onStopped();
 
@@ -309,7 +351,7 @@ public class dfSpriteAnimation : dfTweenPlayableBase
 
 	#endregion
 
-	#region Private utility methods 
+	#region Private utility methods
 
 	private IEnumerator Execute()
 	{
@@ -317,12 +359,14 @@ public class dfSpriteAnimation : dfTweenPlayableBase
 		if( clip == null || clip.Sprites == null || clip.Sprites.Count == 0 )
 			yield break;
 
-
 		this.isRunning = true;
+		this.isPaused = false;
+
+		onStarted();
 
 		var startTime = Time.realtimeSinceStartup;
 		var direction = ( this.playDirection == PlayDirection.Forward ) ? 1 : -1;
-		var lastFrameIndex = (direction == 1) ? 0 : clip.Sprites.Count - 1;
+		var lastFrameIndex = ( direction == 1 ) ? 0 : clip.Sprites.Count - 1;
 
 		setFrame( lastFrameIndex );
 
@@ -330,6 +374,10 @@ public class dfSpriteAnimation : dfTweenPlayableBase
 		{
 
 			yield return null;
+
+			// Do nothing if the animation is paused
+			if( IsPaused )
+				continue;
 
 			// Rereference these values each frame in case base AnimationClip
 			// has changed (should probably on happen at design time in editor)
@@ -352,6 +400,8 @@ public class dfSpriteAnimation : dfTweenPlayableBase
 				switch( this.loopType )
 				{
 					case dfTweenLoopType.Once:
+						isRunning = false;
+						onCompleted();
 						yield break;
 					case dfTweenLoopType.Loop:
 						startTime = timeNow;
@@ -370,7 +420,7 @@ public class dfSpriteAnimation : dfTweenPlayableBase
 			{
 				frameIndex = maxFrameIndex - frameIndex;
 			}
-			
+
 			// Set the current animation frame on the sprite
 			if( lastFrameIndex != frameIndex )
 			{

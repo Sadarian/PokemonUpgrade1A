@@ -39,6 +39,11 @@ public class dfList<T> : IList<T>, IDisposable
 	{
 	}
 
+	internal dfList( IList<T> listToClone )
+	{
+		AddRange( listToClone );
+	}
+
 	internal dfList( int capacity )
 	{
 		EnsureCapacity( capacity );
@@ -354,6 +359,27 @@ public class dfList<T> : IList<T>, IDisposable
 		Array.Copy( list.items, 0, this.items, index, list.count );
 
 		this.count += list.count;
+
+	}
+
+	/// <summary>
+	/// Removes all items matching the predicate condition from the list
+	/// </summary>
+	public void RemoveAll( Predicate<T> predicate )
+	{
+
+		var index = 0;
+		while( index < this.count )
+		{
+			if( predicate( items[ index ] ) )
+			{
+				RemoveAt( index );
+			}
+			else
+			{
+				index += 1;
+			}
+		}
 
 	}
 

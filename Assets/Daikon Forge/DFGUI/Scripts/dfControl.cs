@@ -96,6 +96,21 @@ using UnityColor32 = UnityEngine.Color32;
 /// <para>For these events, the original source of the event can be determined by the value of the
 /// dfControlEventArgs.Source property. Whether the event has already been handled can be 
 /// determined by the value of the dfControlEventArgs.Used property.</para>
+/// <h4>Event handlers as coroutines</h4>
+/// <para>Your event handlers can also be called as a <a href="http://docs.unity3d.com/Documentation/Manual/Coroutines.html" target="_blank">coroutine</a>, 
+/// so that when the desired event is raised, your code can perform long-running asynchronous operations.</para>
+/// <para>In order to function as a coroutine, your event handler must return an IEnumerator object and use the 
+/// <a href="http://docs.unity3d.com/412/Documentation/ScriptReference/index.Coroutines_26_Yield.html" target="_blank">yield</a> keyword within the method body, like the following example:</para>
+/// <pre>public IEnumerator OnClick( dfControl control, dfMouseEventArgs mouseEvent )
+/// {
+/// 
+/// 	Debug.Log( "OnClick() started" );
+/// 
+/// 	yield return new WaitForSeconds( 2 );
+/// 
+/// 	Debug.Log( "OnClick() over" );
+/// 
+/// }</pre>
 /// </summary>
 #endregion
 [Serializable]
@@ -337,7 +352,7 @@ public abstract class dfControl : MonoBehaviour, IComparable<dfControl>
 	/// the anchor style
 	/// </summary>
 	[SerializeField]
-	protected AnchorLayout layout = new AnchorLayout( dfAnchorStyle.Left | dfAnchorStyle.Top );
+	protected AnchorLayout layout = null;
 
 	/// <summary>
 	/// Used by the GUI system to correctly determine the order in which 
@@ -842,7 +857,7 @@ public abstract class dfControl : MonoBehaviour, IComparable<dfControl>
 			if( value != zindex )
 			{
 
-				this.zindex = Mathf.Max( 0, value );
+				this.zindex = Mathf.Max( -1, value );
 				Invalidate();
 
 				if( parent != null )
@@ -1606,7 +1621,7 @@ public abstract class dfControl : MonoBehaviour, IComparable<dfControl>
 			GetManager().GetComponentsInChildren<dfControl>()
 			.Where( c =>
 				c != this &&
-				c.TabIndex > 0 &&
+				c.TabIndex >= 0 &&
 				c.IsInteractive &&
 				c.CanFocus &&
 				c.IsVisible
@@ -1957,11 +1972,24 @@ public abstract class dfControl : MonoBehaviour, IComparable<dfControl>
 				null
 			);
 
+			IEnumerator coroutine = null;
+
 			if( handlerWithParams != null )
 			{
-				handlerWithParams.Invoke( component, args );
+
+				coroutine = handlerWithParams.Invoke( component, args ) as IEnumerator;
+
+				// If the target event handler returned an IEnumerator object,
+				// assume that it should be run as a coroutine.
+				if( coroutine != null )
+				{
+					( (MonoBehaviour)component ).StartCoroutine( coroutine );
+				}
+				
 				wasHandled = true;
+
 				continue;
+
 			}
 
 			#endregion
@@ -1981,8 +2009,18 @@ public abstract class dfControl : MonoBehaviour, IComparable<dfControl>
 
 			if( handlerWithoutParams != null )
 			{
-				handlerWithoutParams.Invoke( component, null );
+
+				coroutine = handlerWithoutParams.Invoke( component, null ) as IEnumerator;
+
+				// If the target event handler returned an IEnumerator object,
+				// assume that it should be run as a coroutine.
+				if( coroutine != null )
+				{
+					( (MonoBehaviour)component ).StartCoroutine( coroutine );
+				}
+
 				wasHandled = true;
+
 			}
 
 			#endregion
@@ -1996,6 +2034,16 @@ public abstract class dfControl : MonoBehaviour, IComparable<dfControl>
 	#endregion
 
 	#region Public methods 
+
+	/// <summary>
+	/// Returns the raw value of the isVisible field, without 
+	/// the recursive costs of using the IsVisible property.
+	/// </summary>
+	/// <returns></returns>
+	internal bool GetIsVisibleRaw()
+	{
+		return this.isVisible;
+	}
 
 	/// <summary>
 	/// Causes the control to use localized data for its (class-specific)
@@ -2176,7 +2224,7 @@ public abstract class dfControl : MonoBehaviour, IComparable<dfControl>
 		if( this.name == Name && this is T )
 			return (T)this;
 
-		updateControlHeirarchy( true );
+		updateControlHierarchy( true );
 
 		for( int i = 0; i < controls.Count; i++ )
 		{
@@ -2209,7 +2257,7 @@ public abstract class dfControl : MonoBehaviour, IComparable<dfControl>
 		if( this.name == Name )
 			return this;
 
-		updateControlHeirarchy( true );
+		updateControlHierarchy( true );
 
 		for( int i = 0; i < controls.Count; i++ )
 		{
@@ -2319,6 +2367,10 @@ public abstract class dfControl : MonoBehaviour, IComparable<dfControl>
 		try
 		{
 
+#if UNITY_EDITOR
+			//@Profiler.BeginSample( "Rendering " + GetType().Name );
+#endif
+
 			rendering = true;
 
 			// NOTE: We can get away with checking the isVisible field instead
@@ -2363,6 +2415,10 @@ public abstract class dfControl : MonoBehaviour, IComparable<dfControl>
 
 			// At this point the control is considered to no longer need rendering
 			isControlInvalidated = false;
+
+#if UNITY_EDITOR
+			//@Profiler.EndSample();
+#endif
 		
 		}
 
@@ -2392,6 +2448,8 @@ public abstract class dfControl : MonoBehaviour, IComparable<dfControl>
 	/// </summary>
 	/// <param name="recursive">Set to TRUE if the layout information should be
 	/// reset recursively</param>
+	/// <param name="force">Set to TRUE to force the layout, even if SuspendLayout
+	/// has been set to TRUE</param>
 	[HideInInspector]
 	public virtual void ResetLayout( bool recursive = false, bool force = false )
 	{
@@ -2763,7 +2821,7 @@ public abstract class dfControl : MonoBehaviour, IComparable<dfControl>
 	protected internal virtual void updateCollider()
 	{
 
-		if( !this.isInteractive && Application.isPlaying )
+		if( Application.isPlaying && !this.isInteractive )
 			return;
 
 		var myCollider = collider as BoxCollider;
@@ -2811,6 +2869,8 @@ public abstract class dfControl : MonoBehaviour, IComparable<dfControl>
 			ControlAdded( this, child );
 		}
 
+		Signal( "OnControlAdded", this, child );
+
 	}
 
 	/// <summary>
@@ -2826,6 +2886,8 @@ public abstract class dfControl : MonoBehaviour, IComparable<dfControl>
 		{
 			ControlRemoved( this, child );
 		}
+
+		Signal( "OnControlRemoved", this, child );
 
 	}
 
@@ -2876,6 +2938,12 @@ public abstract class dfControl : MonoBehaviour, IComparable<dfControl>
 		// means that the Size was set independantly of layout either in code 
 		// or by the developer, so reset the layout.
 		ResetLayout();
+
+		// If either "center" flag is set, need to perform centering
+		if( Anchor.IsAnyFlagSet( dfAnchorStyle.CenterHorizontal | dfAnchorStyle.CenterVertical ) )
+		{
+			PerformLayout();
+		}
 
 		if( SizeChanged != null )
 		{
@@ -3134,7 +3202,7 @@ public abstract class dfControl : MonoBehaviour, IComparable<dfControl>
 		// OnResolutionChanged() happens very early in the startup process, and the 
 		// execution order is indeterminate, so make sure that the control hierarchy 
 		// is properly set up when this function is called.
-		updateControlHeirarchy();
+		updateControlHierarchy();
 
 		// Make sure that the control remains at the same relative position
 		cachedPixelSize = 0f;
@@ -3214,12 +3282,12 @@ public abstract class dfControl : MonoBehaviour, IComparable<dfControl>
 
 		Gizmos.matrix = Matrix4x4.TRS( transform.position, transform.rotation, transform.localScale );
 
-		Gizmos.color = new UnityColor( 0, 1, 0, 0.25f );
+		Gizmos.color = new UnityColor( 0.3f, 0.75f, 1f, 0.5f );
 		Gizmos.DrawWireCube( center, size );
 
 		// Rendering a clear cube allows the user to click on the control
 		// in the Unity Editor Scene Manager
-		var thickness = new Vector3( 0, 0, 0.003f * ( renderOrder + 1 ) );
+		var thickness = new Vector3( 0, 0, 0.007f * ( renderOrder + 1 ) );
 		Gizmos.color = UnityColor.clear;
 		Gizmos.DrawCube( center, size + thickness );
 
@@ -3233,7 +3301,33 @@ public abstract class dfControl : MonoBehaviour, IComparable<dfControl>
 	[HideInInspector]
 	public virtual void Awake()
 	{
-		if( layout != null ) layout.Attach( this );
+
+		if( transform.parent != null )
+		{
+
+			var parentControl = transform.parent.GetComponent<dfControl>();
+			if( parentControl != null )
+			{
+				this.parent = parentControl;
+				parentControl.AddControl( this );
+			}
+
+			if( this.controls == null )
+			{
+				updateControlHierarchy();
+			}
+
+			// When returning to the Editor after pressing the Stop button,
+			// prefabs need to perform layout again. Otherwise they get 
+			// completely messed up. This is unfortunately not a complete
+			// fix, but does seem to improve some situations.
+			if( !Application.isPlaying )
+			{
+				PerformLayout();
+			}
+
+		}
+
 	}
 
 	/// <summary>
@@ -3244,16 +3338,6 @@ public abstract class dfControl : MonoBehaviour, IComparable<dfControl>
 	public virtual void Start()
 	{
 
-		if( this.controls == null )
-		{
-			updateControlHeirarchy();
-		}
-
-		if( Application.isPlaying )
-		{
-			collider.enabled = this.IsInteractive;
-		}
-
 	}
 
 	/// <summary>
@@ -3263,27 +3347,17 @@ public abstract class dfControl : MonoBehaviour, IComparable<dfControl>
 	public virtual void OnEnable()
 	{
 
+		if( Application.isPlaying )
+		{
+			collider.enabled = this.IsInteractive;
+		}
+
 		initializeControl();
 
 		if( controls == null || controls.Count == 0 )
 		{
-			updateControlHeirarchy();
+			updateControlHierarchy();
 		}
-
-		// Prefabs should not attempt to reuse invalid layout information
-		if( !gameObject.activeInHierarchy )
-		{
-			ResetLayout();
-		}
-
-#if UNITY_EDITOR
-		// HACK: Without this, the layouts in the editor window are messed up
-		// until the user clicks within the viewport
-		if( Application.isEditor && !Application.isPlaying )
-		{
-			Update();
-		}
-#endif
 
 		// Localize controls at startup
 		if( Application.isPlaying && this.IsLocalized )
@@ -3441,7 +3515,7 @@ public abstract class dfControl : MonoBehaviour, IComparable<dfControl>
 
 		// Maintain the control hierarchy - Keeps track of when child Controls are 
 		// added to or removed from this dfControl.
-		updateControlHeirarchy();
+		updateControlHierarchy();
 
 		// If the transform has been changed this dfControl needs to determine whether
 		// the changes are already reflected in the Position and Size properties and
@@ -3454,9 +3528,9 @@ public abstract class dfControl : MonoBehaviour, IComparable<dfControl>
 			if( !Application.isPlaying )
 			{
 #if UNITY_EDITOR
-				if( Vector3.Distance( this.transform.localScale, Vector3.one ) > float.Epsilon )
+				if( Vector3.Distance( transform.localScale, Vector3.one ) > float.Epsilon )
 				{
-					this.transform.localScale = Vector3.one;
+					transform.localScale = Vector3.one;
 				}
 #endif
 			}
@@ -3517,7 +3591,7 @@ public abstract class dfControl : MonoBehaviour, IComparable<dfControl>
 
 		child.zindex = zindex;
 
-		rebuildControlOrder();
+		RebuildControlOrder();
 
 	}
 
@@ -3529,21 +3603,7 @@ public abstract class dfControl : MonoBehaviour, IComparable<dfControl>
 	/// <returns>A reference to the newly-created control instance</returns>
 	public T AddControl<T>() where T : dfControl
 	{
-
-		var go = new GameObject( typeof( T ).Name );
-		go.transform.parent = this.transform;
-		go.layer = this.gameObject.layer;
-
-		go.transform.localPosition = (Vector3)( Size * PixelsToUnits() * 0.5f );
-
-		var child = go.AddComponent<T>();
-		child.parent = this;
-		child.ZOrder = -1;
-
-		AddControl( child );
-
-		return child;
-
+		return (T)AddControl( typeof( T ) );
 	}
 
 	/// <summary>
@@ -3569,7 +3629,7 @@ public abstract class dfControl : MonoBehaviour, IComparable<dfControl>
 
 		var child = go.AddComponent( ControlType ) as dfControl;
 		child.parent = this;
-		child.ZOrder = -1;
+		child.zindex = -1;
 
 		AddControl( child );
 
@@ -3581,7 +3641,7 @@ public abstract class dfControl : MonoBehaviour, IComparable<dfControl>
 	/// Adds the child control to the list of child controls for this instance
 	/// </summary>
 	/// <param name="child">The <see cref="dfControl"/> instance to add to the list of child controls</param>
-	protected internal void AddControl( dfControl child )
+	public void AddControl( dfControl child )
 	{
 
 		// Cannot just call AddControl( new dfControl() ), use AddControl<Type>() instead.
@@ -3591,22 +3651,35 @@ public abstract class dfControl : MonoBehaviour, IComparable<dfControl>
 		}
 
 		// Nothing to do if the control is already in the collection
-		if( controls.Contains( child ) )
-			return;
-
-		// Add the control to the hierarchy
-		controls.Add( child );
-		child.parent = this;
-		child.transform.parent = this.transform;
+		if( !controls.Contains( child ) )
+		{
+			// Add the control to the hierarchy
+			controls.Add( child );
+			child.parent = this;
+			child.transform.parent = this.transform;
+		}
 			
 		// A ZOrder value of -1 means "make it the topmost control"
-		if( child.ZOrder == -1 )
+		// If this is not what is desired, the caller must specify
+		// the custom ZOrder afterward
+		if( child.zindex == -1 )
 		{
-			child.ZOrder = getMaxZOrder() + 1;
+
+			// Auto-increment the control's ZOrder
+			child.zindex = getMaxZOrder() + 1;
+
 		}
+
+		// The list of child controls must always remain sorted
+		controls.Sort();
 
 		// Notify all observers that a control has been added
 		OnControlAdded( child );
+
+		// Controls need to update their version number (and therefore clipping
+		// data) and redraw themselves after changing relationships
+		child.Invalidate();
+		this.Invalidate();
 
 	}
 
@@ -3616,10 +3689,10 @@ public abstract class dfControl : MonoBehaviour, IComparable<dfControl>
 	private int getMaxZOrder()
 	{
 
-		var max = 0;
+		var max = -1;
 		for( int i = 0; i < controls.Count; i++ )
 		{
-			max = Mathf.Max( controls[ i ].ZOrder, max );
+			max = Mathf.Max( controls[ i ].zindex, max );
 		}
 
 		return max;
@@ -3630,26 +3703,71 @@ public abstract class dfControl : MonoBehaviour, IComparable<dfControl>
 	/// Removes the indicated control from the list of child controls for this instance
 	/// </summary>
 	/// <param name="child">The control to remove from the list of child controls</param>
-	protected internal void RemoveControl( dfControl child )
+	public void RemoveControl( dfControl child )
 	{
 
 		if( isDisposing )
 			return;
 
+		if( child.Parent == this )
+			child.parent = null;
+
 		if( controls.Remove( child ) )
 		{
-			rebuildControlOrder();
+
+			// Notify all interested observers
 			OnControlRemoved( child );
+
+			// Controls need to update their version number (and therefore clipping
+			// data) and redraw themselves after changing relationships
+			child.Invalidate();
+			this.Invalidate();
+
 		}
 
 	}
+
+	/// <summary>
+	/// Removes any gaps in the ZOrder of child controls and 
+	/// sorts the Controls collection according to ZOrder
+	/// </summary>
+	[HideInInspector]
+	public void RebuildControlOrder()
+	{
+
+		var rebuild = false;
+
+		controls.Sort();
+		for( int i = 0; i < controls.Count; i++ )
+		{
+			if( controls[ i ].ZOrder != i )
+			{
+				rebuild = true;
+				break;
+			}
+		}
+
+		if( !rebuild )
+			return;
+
+		controls.Sort();
+		for( int i = 0; i < controls.Count; i++ )
+		{
+			controls[ i ].zindex = i;
+		}
+
+	}
+
+	#endregion
+
+	#region Private utility methods
 
 	/// <summary>
 	/// Compensates for Unity3D's lack of a consistent order of startup events
 	/// and lack of hierarchy change notifications by manually tracking changes 
 	/// to the GameObject's hierarchy and updating the Controls collection to match.
 	/// </summary>
-	private void updateControlHeirarchy( bool force = false )
+	internal void updateControlHierarchy( bool force = false )
 	{
 
 		// Assume that the control hierarchy is correct if Transform.childCount
@@ -3676,11 +3794,14 @@ public abstract class dfControl : MonoBehaviour, IComparable<dfControl>
 			child.parent = this;
 
 			// TODO: Do controls need a new layout when parented to another dfControl?
-			//child.ResetLayout();
+			if( !Application.isPlaying )
+			{
+				child.ResetLayout();
+			}
 
 			// Notify any observers that the control was added
 			OnControlAdded( child );
-			child.updateControlHeirarchy();
+			child.updateControlHierarchy();
 
 		}
 
@@ -3718,7 +3839,7 @@ public abstract class dfControl : MonoBehaviour, IComparable<dfControl>
 		this.controls = childControls;
 
 		// Always keep the Controls sorted by ZOrder
-		rebuildControlOrder();
+		RebuildControlOrder();
 
 	}
 
@@ -3753,39 +3874,17 @@ public abstract class dfControl : MonoBehaviour, IComparable<dfControl>
 
 	}
 
-	private void rebuildControlOrder()
-	{
-
-		var rebuild = false;
-
-		controls.Sort();
-		for( int i = 0; i < controls.Count; i++ )
-		{
-			if( controls[ i ].ZOrder != i )
-			{
-				rebuild = true;
-				break;
-			}
-		}
-
-		if( !rebuild )
-			return;
-
-		controls.Sort();
-		for( int i = 0; i < controls.Count; i++ )
-		{
-			controls[ i ].zindex = i;
-		}
-
-	}
-
 	private void ensureLayoutExists()
 	{
 
-		// If a valid layout already exists, nothing to do
+		// Create a new layout, if needed
 		if( layout == null )
 		{
 			layout = new AnchorLayout( dfAnchorStyle.Left | dfAnchorStyle.Top, this );
+		}
+		else
+		{
+			layout.Attach( this );
 		}
 
 		// Make sure all child controls also have a layout
@@ -3798,10 +3897,6 @@ public abstract class dfControl : MonoBehaviour, IComparable<dfControl>
 		}
 
 	}
-
-	#endregion
-
-	#region Private utility methods
 
 	protected internal void updateVersion()
 	{
@@ -3844,10 +3939,23 @@ public abstract class dfControl : MonoBehaviour, IComparable<dfControl>
 
 		// updateControlHeirarchy( true );
 		ensureLayoutExists();
-
 		Invalidate();
 
+		// Make sure that the collider is not a Trigger. 
 		collider.isTrigger = false;
+
+		// Add a kinematic rigidbody at runtime to make moving controls and 
+		// updating the collider less expensive (in theory, not conclusive)
+		if( Application.isPlaying && rigidbody == null )
+		{
+			var rigidBody = gameObject.AddComponent<Rigidbody>();
+			rigidBody.hideFlags = HideFlags.HideAndDontSave | HideFlags.HideInInspector;
+			rigidBody.isKinematic = true;
+			rigidBody.detectCollisions = false;
+		}
+
+		// Make sure that the collider matches the desired size
+		updateCollider();
 
 	}
 
@@ -4201,6 +4309,9 @@ public abstract class dfControl : MonoBehaviour, IComparable<dfControl>
 		internal void Reset( bool force = false )
 		{
 
+			if( owner == null || owner.transform.parent == null )
+				return;
+
 			var layoutInProgress = !force && ( IsPerformingLayout || IsLayoutSuspended );
 
 			var cannotReset =
@@ -4298,6 +4409,23 @@ public abstract class dfControl : MonoBehaviour, IComparable<dfControl>
 			{
 				performingLayout = false;
 			}
+
+		}
+
+		private string getPath( dfControl owner )
+		{
+			
+			var buffer = new System.Text.StringBuilder( 1024 );
+			
+			while( owner != null )
+			{
+				if( buffer.Length > 0 )
+					buffer.Insert( 0, '/' );
+				buffer.Insert( 0, owner.name );
+				owner = owner.Parent;
+			}
+
+			return buffer.ToString();
 
 		}
 
@@ -4444,11 +4572,17 @@ public abstract class dfControl : MonoBehaviour, IComparable<dfControl>
 		private Vector2 getParentSize()
 		{
 
-			if( owner.parent != null )
-				return owner.parent.Size;
+			// Do not use the control's Parent property, there are some
+			// circumstances where newly-instantiated controls or prefabs
+			// do not have the proper value assigned by this point
+			var parent = owner.transform.parent.GetComponent<dfControl>();
+			if( parent != null )
+				return parent.Size;
 				
 			var manager = owner.GetManager();
-			return manager.GetScreenSize();
+			var screenSize = manager.GetScreenSize();
+
+			return screenSize;
 
 		}
 
