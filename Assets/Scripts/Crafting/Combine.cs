@@ -5,7 +5,7 @@ public class Combine : MonoBehaviour
 {
 	public List<GameObject> slots = new List<GameObject>();
 
-	public Dictionary<Combination, GameController.Materials> optionalCombinations = new Dictionary<Combination, GameController.Materials>();
+	public Dictionary<Combination, GameController.Rune> optionalCombinations = new Dictionary<Combination, GameController.Rune>();
 	public List<Combination> combinations = new List<Combination>();
 
 	public GameObject endProdukt;
@@ -76,21 +76,26 @@ public class Combine : MonoBehaviour
 
 		for (int i = 0; i < gameController.runeMeterials.Count; i++ )
 		{
-			combinations.Add(CombinationFromJson(jsonComb, gameController.runeMeterials[i]));
-			optionalCombinations.Add(combinations[i], gameController.runeMeterials[i]);
+			CombinationFromJson(jsonComb, gameController.runeMeterials[i]);
 		}
 	}
 
-	private Combination CombinationFromJson(JSONObject jsonComb, GameController.Materials material)
+	private void CombinationFromJson(JSONObject jsonComb, GameController.Materials material)
 	{
 		int[] comb = new int[4];
 		JSONObject jList = jsonComb[material.ToString()];
 		for (int i = 0; i < jList.Count; i++)
 		{
-			comb[i] = (int)jList[i];
-		}
+			for (int j = 0; j < jList[i].Count; j++)
+			{
+				comb[j] = (int)jList[i][j];
+			}
 
-		return new Combination(comb);
+			Combination curCombi = new Combination(comb);
+
+			combinations.Add(curCombi);
+			optionalCombinations.Add(curCombi, material);
+		}
 	}
 
 	public void FillSlot()

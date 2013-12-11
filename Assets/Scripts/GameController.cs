@@ -24,7 +24,7 @@ public class GameController : MonoBehaviour
 	public Turns curTurn;
 
 	public Dictionary<string, Materials> spriteToElement = new Dictionary<string, Materials>();
-	public Dictionary<Materials, List<string>> elementToSprite = new Dictionary<Materials, List<string>>();
+	public Dictionary<Materials, string[]> elementToSprite = new Dictionary<Materials, string[]>();
 	public Dictionary<Materials, Rune> runes = new Dictionary<Materials, Rune>();
 
 	public List<Materials> runeMeterials = new List<Materials>();
@@ -132,7 +132,7 @@ public class GameController : MonoBehaviour
 		spriteToElement.Add("spell-water", Materials.GreatWater);
 		spriteToElement.Add("spell-earth", Materials.GreatEarth);
 
-		elementToSprite.Add(Materials.Fire, "spell-2");
+		elementToSprite.Add(Materials.Fire, new string("spell-2"));
 		elementToSprite.Add(Materials.Air, "spell-6");
 		elementToSprite.Add(Materials.Earth, "spell-8");
 		elementToSprite.Add(Materials.Water, "spell-9");
